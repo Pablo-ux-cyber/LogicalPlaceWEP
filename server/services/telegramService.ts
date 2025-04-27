@@ -112,8 +112,7 @@ export function sendBuySignal(signal: BuySignal) {
   const message = `✨ <b>${signal.symbol}</b> | BUY SIGNAL ✨
 
 📌 Price: $${signal.price.toFixed(2)}
-📉 BB Daily: $${signal.bbLowerDaily.toFixed(2)}
-📉 BB Weekly: $${signal.bbLowerWeekly.toFixed(2)}
+📉 BB (1W): $${signal.bbLowerWeekly.toFixed(2)}
 
 🔍 <a href="${chartUrl}">View Chart</a>`;
 
@@ -145,7 +144,7 @@ export function sendTestMessage() {
       symbol: 'SOL',
       price: 147.82,
       time: new Date(),
-      bbLowerDaily: 138.25,
+      bbLowerDaily: 0, // Не используется в этой версии
       bbLowerWeekly: 142.35
     };
     
@@ -175,7 +174,7 @@ export function sendTestMessage() {
 }
 
 /**
- * Расчет индикаторов Боллинджера - точно соответствует PineScript реализации
+ * Расчет индикаторов Боллинджера
  * @param data Массив свечей
  * @param period Период для расчета (по умолчанию 20)
  * @param multiplier Множитель для стандартного отклонения (по умолчанию 2.0)
@@ -201,12 +200,14 @@ function calculateBollingerBands(data: CandleData[], period: number = 20, multip
     const variance = squaredDiffs.reduce((acc, diff) => acc + diff, 0) / period;
     const stdDev = Math.sqrt(variance);
     
-    // Расчет нижней полосы Боллинджера
+    // Расчет верхней и нижней полос
+    const upper = sma + (multiplier * stdDev);
     const lower = sma - (multiplier * stdDev);
     
     result.push({
       time: data[i].time,
       sma,
+      upper,
       lower,
       stdDev
     });
@@ -247,88 +248,42 @@ export async function checkBuySignals(cryptoSymbols: string[]) {
       try {
         console.log(`Проверка ${symbol}...`);
         
-        // Получаем данные недельного таймфрейма
+        // Получаем данные только недельного таймфрейма
         const weeklyData = await fetchCryptoPriceData(symbol, '1w');
         
-        // Получаем также данные дневного таймфрейма
-        const dailyData = await fetchCryptoPriceData(symbol, '1d');
-        
         // Проверяем наличие данных
-        if (!weeklyData.candles.length || !dailyData.candles.length) {
+        if (!weeklyData.candles.length) {
           const noDataMessage = `Нет данных для ${symbol}. Пропускаем.`;
           console.warn(noDataMessage);
           logError(symbol, noDataMessage);
           return { success: false, error: true, signal: false };
         }
         
-        // Получаем последние свечи
+        // Получаем последнюю свечу недельного таймфрейма
         const lastWeeklyCandle = weeklyData.candles[weeklyData.candles.length - 1];
-        const lastDailyCandle = dailyData.candles[dailyData.candles.length - 1];
         
-        // Для правильного расчета недельного Bollinger Bands в PineScript нужно минимум 20 недель данных
-        if (weeklyData.candles.length < 20) {
-          const notEnoughDataMessage = `Недостаточно недельных данных для ${symbol}. Нужно минимум 20 недель, имеем ${weeklyData.candles.length}.`;
-          console.warn(notEnoughDataMessage);
-          logError(symbol, notEnoughDataMessage);
-          return { success: false, error: true, signal: false };
-        }
+        // Рассчитываем полосы Боллинджера для недельного таймфрейма
+        const weeklyBB = calculateBollingerBands(weeklyData.candles);
         
-        // Рассчитываем полосы Боллинджера для обоих таймфреймов
-        // Точно как в PineScript: 20 период, 2.0 множитель
-        const dailyBB = calculateBollingerBands(dailyData.candles, 20, 2.0);
-        
-        // Для недельного таймфрейма нужно использовать тот же расчет
-        // В PineScript это делается через request.security(syminfo.tickerid, "W", ...)
-        const weeklyBB = calculateBollingerBands(weeklyData.candles, 20, 2.0);
-        
-        // Логируем информацию о количестве данных для отладки
-        console.log(`${symbol}: Недельных свечей: ${weeklyData.candles.length}, результатов BB: ${weeklyBB.length}`);
-        
-        if (!weeklyBB.length || !dailyBB.length) {
+        if (!weeklyBB.length) {
           const noBBMessage = `Не удалось рассчитать полосы Боллинджера для ${symbol}. Пропускаем.`;
           console.warn(noBBMessage);
           logError(symbol, noBBMessage);
           return { success: false, error: true, signal: false };
         }
         
-        // Получаем значения полос для последних свечей
+        // Получаем значения полос для последней свечи
         const lastWeeklyBB = weeklyBB[weeklyBB.length - 1];
-        const lastDailyBB = dailyBB[dailyBB.length - 1];
         
-        // Текущая цена (берем из последней дневной свечи, она более актуальна)
-        const currentPrice = lastDailyCandle.close;
+        // Проверяем условие для сигнала на покупку - только недельный таймфрейм
+        const currentPrice = lastWeeklyCandle.close;
         const bbLowerWeekly = lastWeeklyBB.lower;
-        const bbLowerDaily = lastDailyBB.lower;
         
-        // Проверяем дневной и недельный BB, точно как в вашем PineScript коде:
-        // entry_condition = source <= bb_lower_d and source <= bb_lower_w 
-        // Оба таймфрейма должны быть ниже соответствующей полосы Боллинджера
-        const isPriceBelowDailyBB = currentPrice <= bbLowerDaily;
-        const isPriceBelowWeeklyBB = currentPrice <= bbLowerWeekly;
+        // Сигнал возникает когда цена ниже недельной нижней полосы Боллинджера
+        const isBuySignal = currentPrice <= bbLowerWeekly;
         
-        // Логируем данные для отладки
-        console.log(`${symbol}: Цена ${currentPrice.toFixed(4)} ${isPriceBelowDailyBB ? '<=' : '>'} BB Daily ${bbLowerDaily.toFixed(4)}, ${isPriceBelowWeeklyBB ? '<=' : '>'} BB Weekly ${bbLowerWeekly.toFixed(4)}`);
-        
-        // Выводим сравнение с TradingView PineScript кодом
-        const pinescriptValid = isPriceBelowDailyBB && isPriceBelowWeeklyBB;
-        console.log(`${symbol}: PineScript расчет (цена <= дневной BB И цена <= недельный BB): ${pinescriptValid ? 'СИГНАЛ!' : 'нет сигнала'}`);
-        
-        // Проверяем условия отдельно и выводим
-        console.log(`Daily: Цена ${currentPrice.toFixed(4)} <= BB Daily ${bbLowerDaily.toFixed(4)}? ${isPriceBelowDailyBB}`);
-        console.log(`Weekly: Цена ${currentPrice.toFixed(4)} <= BB Weekly ${bbLowerWeekly.toFixed(4)}? ${isPriceBelowWeeklyBB}`);
-        
-        // Добавляем расширенную информацию для отладки
-        if (lastWeeklyBB.stdDev < 0.001 || lastDailyBB.stdDev < 0.001) {
-          console.log(`${symbol} - ОТЛАДКА РАСЧЕТОВ: Daily: SMA=${lastDailyBB.sma.toFixed(4)}, StdDev=${lastDailyBB.stdDev.toFixed(6)}`);
-          console.log(`${symbol} - ОТЛАДКА РАСЧЕТОВ: Weekly: SMA=${lastWeeklyBB.sma.toFixed(4)}, StdDev=${lastWeeklyBB.stdDev.toFixed(6)}`);
-        }
-        
-        // Сигнал возникает когда цена ниже обоих уровней BB - дневного И недельного
-        // Точно как в PineScript: entry_condition = source <= bb_lower_d and source <= bb_lower_w
-        const isBuySignal = isPriceBelowDailyBB && isPriceBelowWeeklyBB;
-        
-        // Логируем результат проверки с информацией о дневной и недельной полосе
-        logCryptoCheck(symbol, currentPrice, bbLowerWeekly, isBuySignal, bbLowerDaily);
+        // Логируем результат проверки
+        logCryptoCheck(symbol, currentPrice, bbLowerWeekly, isBuySignal);
         
         if (isBuySignal) {
           // Дополнительная проверка - исключаем нежелательные криптовалюты из сигналов
@@ -356,12 +311,12 @@ export async function checkBuySignals(cryptoSymbols: string[]) {
           console.log(signalMessage);
           logToFile(signalMessage, 'signals');
           
-          // Отправляем сигнал с данными дневной и недельной полосы Боллинджера
+          // Отправляем сигнал
           sendBuySignal({
             symbol,
             price: currentPrice,
-            time: new Date(lastDailyCandle.time * 1000),
-            bbLowerDaily,
+            time: new Date(lastWeeklyCandle.time * 1000),
+            bbLowerDaily: 0, // Не используется в этой версии
             bbLowerWeekly
           });
           

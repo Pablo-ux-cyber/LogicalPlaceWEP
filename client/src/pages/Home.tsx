@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import BitcoinChart from '@/components/BitcoinChart';
-import TradingViewIndicator from '@/components/TradingViewIndicator';
 import ChartControls from '@/components/ChartControls';
 import CryptoSelector from '@/components/CryptoSelector';
 import SignalSettings from '@/components/SignalSettings';
@@ -126,66 +125,13 @@ export default function Home() {
       </div>
 
       {/* Main Chart Area */}
-      <div className="flex flex-col gap-4">
-        <BitcoinChart
-          candleData={chartData?.candles || []}
-          volumeData={chartData?.volumes || []}
-          isLoading={isLoading}
-          error={error as Error}
-          onRetry={refetch}
-        />
-        
-        {/* Trading View PineScript информация */}
-        <div className="p-4 bg-gray-800 rounded-lg">
-          <h3 className="text-xl font-bold mb-2">PineScript индикатор Logical Place with Exit Points</h3>
-          <p className="text-sm text-gray-400 mb-4">Индикатор рассчитывает Bollinger Bands на дневном и недельном таймфреймах</p>
-          
-          <div className="flex flex-col space-y-2">
-            <div className="flex items-center">
-              <div className="w-4 h-4 rounded-full bg-blue-500 mr-2"></div>
-              <span>Дневная нижняя полоса Боллинджера (Daily Lower Band)</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 rounded-full bg-red-500 mr-2"></div>
-              <span>Недельная нижняя полоса Боллинджера (Weekly Lower Band)</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-4 h-4 rounded-full bg-orange-500 mr-2"></div>
-              <span>Сигнал на покупку (когда цена ниже обеих полос)</span>
-            </div>
-          </div>
-          
-          <div className="bg-gray-700 p-3 rounded mt-3 font-mono text-sm">
-            <pre>
-{`// @version=6
-indicator("Logical Place with Exit Points", overlay=true)
-
-length = input.int(20, minval=1, title="BB Length")
-mult = input.float(2.0, minval=0.1, title="BB Multiplier")
-source = close
-
-// Дневной расчёт
-daily_sma = ta.sma(source, length)
-daily_std = ta.stdev(source, length)
-bb_lower_d = daily_sma - mult * daily_std
-
-// Недельный расчёт
-weekly_sma = request.security(syminfo.tickerid, "W", ta.sma(source, length))
-weekly_std = request.security(syminfo.tickerid, "W", ta.stdev(source, length))
-bb_lower_w = weekly_sma - mult * weekly_std
-
-// Условие входа: цена ниже обоих уровней
-entry_condition = source <= bb_lower_d and source <= bb_lower_w
-
-// Визуальное отображение
-plot(bb_lower_d, title="Daily Lower Band", color=color.blue, linewidth=2)
-plot(bb_lower_w, title="Weekly Lower Band", color=color.red, linewidth=1)
-plotshape(entry_condition, title="Buy Signal", location=location.belowbar, style=shape.cross, size=size.small, color=color.orange)
-bgcolor(entry_condition ? color.new(color.orange, 90) : na)`}
-            </pre>
-          </div>
-        </div>
-      </div>
+      <BitcoinChart
+        candleData={chartData?.candles || []}
+        volumeData={chartData?.volumes || []}
+        isLoading={isLoading}
+        error={error as Error}
+        onRetry={refetch}
+      />
     </div>
   );
 }

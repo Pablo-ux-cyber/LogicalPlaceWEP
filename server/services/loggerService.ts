@@ -47,30 +47,13 @@ export function logToFile(message: string, logType: 'signals' | 'checks' | 'erro
  * Логировать информацию о проверке монеты
  * @param symbol Символ криптовалюты
  * @param price Текущая цена
- * @param bbLowerWeekly Значение нижней полосы Боллинджера для недельного таймфрейма
+ * @param bbValue Значение нижней полосы Боллинджера
  * @param isSignal Найден ли сигнал
- * @param bbLowerDaily Значение нижней полосы Боллинджера для дневного таймфрейма (опционально)
  */
-export function logCryptoCheck(
-  symbol: string, 
-  price: number, 
-  bbLowerWeekly: number, 
-  isSignal: boolean, 
-  bbLowerDaily?: number
-): void {
-  let status: string;
-  
-  if (bbLowerDaily !== undefined) {
-    // Если передано значение дневной полосы Боллинджера
-    status = isSignal 
-      ? `⚠️ ${symbol}: Цена ${price.toFixed(4)} <= BB Daily ${bbLowerDaily.toFixed(4)} И <= BB Weekly ${bbLowerWeekly.toFixed(4)} - СИГНАЛ НА ПОКУПКУ!` 
-      : `${symbol}: Цена ${price.toFixed(4)}, BB Daily ${bbLowerDaily.toFixed(4)}, BB Weekly ${bbLowerWeekly.toFixed(4)}`;
-  } else {
-    // Обратная совместимость со старым форматом
-    status = isSignal 
-      ? `⚠️ ${symbol}: Цена ${price.toFixed(4)} <= BB Weekly ${bbLowerWeekly.toFixed(4)} - СИГНАЛ НА ПОКУПКУ!` 
-      : `${symbol}: Цена ${price.toFixed(4)} > BB Weekly ${bbLowerWeekly.toFixed(4)}`;
-  }
+export function logCryptoCheck(symbol: string, price: number, bbValue: number, isSignal: boolean): void {
+  const status = isSignal 
+    ? `⚠️ ${symbol}: Цена ${price} <= BB ${bbValue.toFixed(2)} - СИГНАЛ НА ПОКУПКУ!` 
+    : `${symbol}: Цена ${price} > BB ${bbValue.toFixed(2)}`;
   
   logToFile(status, isSignal ? 'signals' : 'checks');
 }

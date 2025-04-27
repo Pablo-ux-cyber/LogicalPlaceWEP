@@ -5,26 +5,6 @@ import { fetchTopCryptos } from './cryptoApi';
 // Расписание для проверки сигналов
 let signalCheckSchedule: cron.ScheduledTask | null = null;
 
-// Список криптовалют для проверки, предоставленный пользователем
-const CRYPTO_LIST = [
-  'BTC', 'ETH', 'XRP', 'BNB', 'SOL', 'DOGE', 'ADA', 'TRX',
-  'SUI', 'LINK', 'AVAX', 'XLM', 'LEO', 'TON', 'SHIB', 'HBAR',
-  'BCH', 'LTC', 'DOT', 'HYPE',
-  'BGB', 'PI', 'XMR',
-  'CBBTC', 'PEPE', 'UNI', 'APT', 'OKB', 'NEAR', 'TAO', 'ONDO', 'TRUMP', 'GT', 'ICP',
-  'ETC', 'AAVE', 'KAS', 'CRO', 'MNT', 'VET', 'RENDER',
-  'POL', 'ATOM', 'ENA',
-  'FET', 'ALGO', 'FTN', 'FIL', 'TIA',
-  'ARB',
-  'WLD', 'BONK',
-  'STX', 'JUP', 'KCS', 'OP', 'MKR',
-  'NEXO', 'QNT', 'FARTCOIN', 'IMX', 'IP',
-  'FLR', 'SEI', 'EOS', 'INJ',
-  'GRT',
-  'CRV',
-  'RAY'
-];
-
 /**
  * Запустить планировщик задач
  */
@@ -34,11 +14,12 @@ export function initScheduler() {
     console.log('Запуск запланированной проверки сигналов на покупку');
     
     try {
-      // Используем предоставленный пользователем список монет, а не запрашиваем все через API
-      console.log(`Проверяем ${CRYPTO_LIST.length} указанных криптовалют`);
+      // Получаем список всех криптовалют для проверки
+      const cryptos = await fetchTopCryptos(100); // Проверяем все подходящие криптовалюты из топ-100
+      const symbols = cryptos.map(crypto => crypto.id);
       
       // Запускаем проверку сигналов
-      await checkBuySignals(CRYPTO_LIST);
+      await checkBuySignals(symbols);
       
       console.log('Запланированная проверка завершена успешно');
     } catch (error) {
@@ -46,7 +27,7 @@ export function initScheduler() {
     }
   });
 
-  console.log('Планировщик задач успешно запущен. Проверка сигналов будет выполняться ежедневно в 08:00 UTC');
+  console.log('Планировщик задач успешно запущен');
   
   // Также сразу запускаем первую проверку через 5 секунд после старта сервера 
   // (чтобы проверить, что всё работает)
@@ -54,11 +35,15 @@ export function initScheduler() {
     console.log('Запуск первоначальной проверки сигналов на покупку');
     
     try {
-      // Используем предоставленный пользователем список монет
-      console.log(`Проверяем ${CRYPTO_LIST.length} указанных криптовалют`);
+      // Получаем все доступные криптовалюты для первоначальной проверки
+      // Запрашиваем до 100 монет, включая основные и дополнительные
+      const cryptos = await fetchTopCryptos(100);
+      const symbols = cryptos.map(crypto => crypto.id);
       
-      // Запускаем проверку сигналов для всех монет из списка
-      await checkBuySignals(CRYPTO_LIST);
+      console.log(`Получено ${symbols.length} криптовалют для проверки (включая основные)`);
+      
+      // Запускаем проверку сигналов для всех доступных монет
+      await checkBuySignals(symbols);
       
       console.log('Первоначальная проверка завершена успешно');
     } catch (error) {
@@ -84,11 +69,17 @@ export function stopScheduler() {
  * Запустить ручную проверку сигналов
  */
 export async function runManualCheck(limit: number = 100) {
-  console.log(`Запуск ручной проверки сигналов для ${CRYPTO_LIST.length} указанных криптовалют`);
+  console.log(`Запуск ручной проверки сигналов для всех доступных криптовалют (макс. ${limit})`);
   
   try {
-    // Запускаем проверку сигналов по заданному списку
-    await checkBuySignals(CRYPTO_LIST);
+    // Получаем полный список криптовалют для проверки
+    const cryptos = await fetchTopCryptos(limit);
+    const symbols = cryptos.map(crypto => crypto.id);
+    
+    console.log(`Получено ${symbols.length} криптовалют для проверки`);
+    
+    // Запускаем проверку сигналов
+    await checkBuySignals(symbols);
     
     console.log('Ручная проверка завершена успешно');
     return true;
