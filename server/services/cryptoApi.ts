@@ -73,22 +73,48 @@ export async function fetchTopCryptos(limit: number = 100): Promise<CryptoCurren
       // Continue even if this fails
     }
     
-    // Step 2: Attempt to get the top cryptocurrencies from the regular API
-    console.log(`Got ${majorCryptosData.length} major cryptocurrencies, trying to get full top 100...`);
+    // Используем только монеты из фиксированного списка
+    console.log(`Got ${majorCryptosData.length} cryptocurrencies from the fixed list`);
     
     // Add proper full names for the major coins
     const fullNames: {[key: string]: string} = {
       'BTC': 'Bitcoin',
       'ETH': 'Ethereum',
+      'XRP': 'XRP',
       'BNB': 'Binance Coin',
       'SOL': 'Solana',
-      'XRP': 'XRP',
-      'ADA': 'Cardano',
       'DOGE': 'Dogecoin',
+      'ADA': 'Cardano',
+      'TRX': 'TRON',
+      'SUI': 'Sui',
+      'LINK': 'Chainlink',
       'AVAX': 'Avalanche',
+      'XLM': 'Stellar',
+      'LEO': 'LEO Token',
+      'TON': 'Toncoin',
+      'SHIB': 'Shiba Inu',
+      'HBAR': 'Hedera',
+      'BCH': 'Bitcoin Cash',
+      'LTC': 'Litecoin',
       'DOT': 'Polkadot',
-      'MATIC': 'Polygon',
-      'TRX': 'TRON'
+      'HYPE': 'Hypesquad',
+      'XMR': 'Monero',
+      'UNI': 'Uniswap',
+      'APT': 'Aptos',
+      'NEAR': 'NEAR Protocol',
+      'AAVE': 'Aave',
+      'VET': 'VeChain',
+      'ATOM': 'Cosmos',
+      'FET': 'Fetch.ai',
+      'ALGO': 'Algorand',
+      'FIL': 'Filecoin',
+      'STX': 'Stacks',
+      'KCS': 'KuCoin Token',
+      'OP': 'Optimism',
+      'QNT': 'Quant',
+      'IMX': 'Immutable X',
+      'EOS': 'EOS',
+      'GRT': 'The Graph'
     };
     
     // Improve our major cryptocurrencies with proper names
@@ -100,9 +126,13 @@ export async function fetchTopCryptos(limit: number = 100): Promise<CryptoCurren
       };
     });
     
-    // Also try to get more data from the original API to fill out the list
-    // Список дополнительных популярных криптовалют для случая, если API не сработает
-    // Расширенный список до 90+ монет, чтобы с учетом основных 10 получилось до 100 монет
+    // Используем только монеты из фиксированного списка, без дополнительных запросов
+    console.log(`Using only ${improvedMajorCryptos.length} cryptocurrencies from the fixed list`);
+    
+    // Возвращаем только монеты из фиксированного списка
+    return improvedMajorCryptos;
+    
+    // Ниже неиспользуемый код со списком дополнительных монет (оставлен в качестве справки)
     const additionalCoins = [
       // Обязательная монета - всегда должна быть в списке
       { id: 'TRX', name: 'TRON' },
