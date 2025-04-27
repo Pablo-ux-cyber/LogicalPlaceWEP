@@ -201,16 +201,29 @@ function calculateBollingerBands(data: CandleData[], period: number = 20, multip
     const variance = squaredDiffs.reduce((acc, diff) => acc + diff, 0) / period;
     const stdDev = Math.sqrt(variance);
     
-    // Расчет верхней и нижней полос
-    const upper = sma + (multiplier * stdDev);
-    const lower = sma - (multiplier * stdDev);
+    // Проверяем, не слишком ли мало стандартное отклонение 
+    // (это может произойти, если все данные одинаковые или их очень мало)
+    const minStdDevPercent = 0.01; // Минимальное стандартное отклонение как процент от SMA
+    const minStdDev = Math.max(sma * minStdDevPercent, 0.001); // Не менее 1% от SMA или 0.001 абсолютного значения
+    
+    // Если стандартное отклонение слишком маленькое, используем минимальное значение
+    let effectiveStdDev = stdDev;
+    if (stdDev < minStdDev) {
+      console.log(`Предупреждение: Низкое стандартное отклонение (${stdDev.toFixed(6)}) для SMA=${sma.toFixed(2)}. Используем минимальное значение ${minStdDev.toFixed(6)}.`);
+      effectiveStdDev = minStdDev;
+    }
+    
+    // Расчет верхней и нижней полос с использованием эффективного стандартного отклонения
+    const upper = sma + (multiplier * effectiveStdDev);
+    const lower = sma - (multiplier * effectiveStdDev);
     
     result.push({
       time: data[i].time,
       sma,
       upper,
       lower,
-      stdDev
+      stdDev,
+      effectiveStdDev
     });
   }
 
@@ -287,16 +300,23 @@ export async function checkBuySignals(cryptoSymbols: string[]) {
         const bbLowerWeekly = lastWeeklyBB.lower;
         const bbLowerDaily = lastDailyBB.lower;
         
-        // Проверяем дневной и недельный BB, как в PineScript:
-        // entry_condition = source <= bb_lower_d and source <= bb_lower_w
+        // Проверяем дневной и недельный BB, точно как в вашем PineScript коде:
+        // entry_condition = source <= bb_lower_d and source <= bb_lower_w 
+        // Оба таймфрейма должны быть ниже соответствующей полосы Боллинджера
         const isPriceBelowDailyBB = currentPrice <= bbLowerDaily;
         const isPriceBelowWeeklyBB = currentPrice <= bbLowerWeekly;
         
         // Логируем данные для отладки
         console.log(`${symbol}: Цена ${currentPrice.toFixed(4)} ${isPriceBelowDailyBB ? '<=' : '>'} BB Daily ${bbLowerDaily.toFixed(4)}, ${isPriceBelowWeeklyBB ? '<=' : '>'} BB Weekly ${bbLowerWeekly.toFixed(4)}`);
         
-        // Сигнал возникает когда цена ниже ОБОИХ уровней - дневного И недельного
-        const isBuySignal = isPriceBelowDailyBB && isPriceBelowWeeklyBB;
+        // Добавляем расширенную информацию для отладки
+        if (lastWeeklyBB.stdDev < 0.001 || lastDailyBB.stdDev < 0.001) {
+          console.log(`${symbol} - ОТЛАДКА РАСЧЕТОВ: Daily: SMA=${lastDailyBB.sma.toFixed(4)}, StdDev=${lastDailyBB.stdDev.toFixed(6)}, EffStdDev=${lastDailyBB.effectiveStdDev?.toFixed(6) || 'N/A'}`);
+          console.log(`${symbol} - ОТЛАДКА РАСЧЕТОВ: Weekly: SMA=${lastWeeklyBB.sma.toFixed(4)}, StdDev=${lastWeeklyBB.stdDev.toFixed(6)}, EffStdDev=${lastWeeklyBB.effectiveStdDev?.toFixed(6) || 'N/A'}`);
+        }
+        
+        // Сигнал возникает ТОЛЬКО по недельному таймфрейму - когда цена ниже недельной полосы
+        const isBuySignal = isPriceBelowWeeklyBB;
         
         // Логируем результат проверки с информацией о дневной и недельной полосе
         logCryptoCheck(symbol, currentPrice, bbLowerWeekly, isBuySignal, bbLowerDaily);
