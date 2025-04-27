@@ -2,6 +2,27 @@ import cron from 'node-cron';
 import { checkBuySignals } from './telegramService';
 import { fetchTopCryptos } from './cryptoApi';
 
+/**
+ * Получить фиксированный список монет для анализа
+ */
+export function getFixedCoinsList(): string[] {
+  // Фиксированный список монет для анализа (топ-70 по капитализации, без стейблкоинов)
+  return [
+    // Топ-10 по капитализации
+    'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'MATIC',
+    // Обязательно добавляем TRX
+    'TRX',
+    // Остальные популярные альткоины (топ-60)
+    'LINK', 'XLM', 'ATOM', 'UNI', 'ALGO', 'NEAR', 'VET', 'FIL', 'XTZ', 'AAVE',
+    'EOS', 'EGLD', 'SAND', 'THETA', 'AXS', 'MANA', 'QNT', 'CRO', 'APE', 'GRT',
+    'KCS', 'FTM', 'XMR', 'FLOW', 'LDO', 'HT', 'CHZ', 'APT', 'IMX', 'SNX',
+    'ONE', 'ENJ', 'LRC', 'BAT', 'ZIL', 'ROSE', 'NEO', 'ZRX', 'STX', 'ONT',
+    'DASH', 'ZEC', 'GMT', 'AR', 'OP', 'COMP', 'GALA', 'FET', 'XEM', 'KAVA',
+    // Дополняем до 70
+    'RSR', 'BTT', 'HOT', 'CELR', 'TRB', 'RVN', 'SXP', 'STORJ', 'SC', 'KSM'
+  ];
+}
+
 // Расписание для проверки сигналов
 let signalCheckSchedule: cron.ScheduledTask | null = null;
 
@@ -14,9 +35,9 @@ export function initScheduler() {
     console.log('Запуск запланированной проверки сигналов на покупку');
     
     try {
-      // Получаем список всех криптовалют для проверки
-      const cryptos = await fetchTopCryptos(100); // Проверяем все подходящие криптовалюты из топ-100
-      const symbols = cryptos.map(crypto => crypto.id);
+      // Используем фиксированный список монет вместо запроса к API
+      const symbols = getFixedCoinsList();
+      console.log(`Используем ${symbols.length} монет из фиксированного списка для плановой проверки`);
       
       // Запускаем проверку сигналов
       await checkBuySignals(symbols);
@@ -35,14 +56,11 @@ export function initScheduler() {
     console.log('Запуск первоначальной проверки сигналов на покупку');
     
     try {
-      // Получаем все доступные криптовалюты для первоначальной проверки
-      // Запрашиваем до 100 монет, включая основные и дополнительные
-      const cryptos = await fetchTopCryptos(100);
-      const symbols = cryptos.map(crypto => crypto.id);
+      // Используем фиксированный список монет вместо запроса к API
+      const symbols = getFixedCoinsList();
+      console.log(`Используем ${symbols.length} монет из фиксированного списка для первоначальной проверки`);
       
-      console.log(`Получено ${symbols.length} криптовалют для проверки (включая основные)`);
-      
-      // Запускаем проверку сигналов для всех доступных монет
+      // Запускаем проверку сигналов
       await checkBuySignals(symbols);
       
       console.log('Первоначальная проверка завершена успешно');
@@ -68,23 +86,25 @@ export function stopScheduler() {
 /**
  * Запустить ручную проверку сигналов
  */
-export async function runManualCheck(limit: number = 100) {
-  console.log(`Запуск ручной проверки сигналов для всех доступных криптовалют (макс. ${limit})`);
+export async function runManualCheck(limit: number = 70) {
+  console.log(`Запуск ручной проверки сигналов для ${limit} монет из фиксированного списка`);
   
   try {
-    // Получаем полный список криптовалют для проверки
-    const cryptos = await fetchTopCryptos(limit);
-    const symbols = cryptos.map(crypto => crypto.id);
+    // Используем фиксированный список монет вместо запроса к API
+    const symbols = getFixedCoinsList().slice(0, limit);
     
-    console.log(`Получено ${symbols.length} криптовалют для проверки`);
+    console.log(`Используем ${symbols.length} монет из фиксированного списка для ручной проверки`);
     
     // Запускаем проверку сигналов
     await checkBuySignals(symbols);
     
     console.log('Ручная проверка завершена успешно');
-    return true;
+    return { success: true, message: `Проверено ${symbols.length} монет` };
   } catch (error) {
     console.error('Ошибка при ручной проверке сигналов:', error);
-    return false;
+    return { 
+      success: false, 
+      message: `Ошибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}` 
+    };
   }
 }

@@ -26,8 +26,24 @@ export async function fetchTopCryptos(limit: number = 100): Promise<CryptoCurren
   try {
     const apiKey = process.env.CRYPTOCOMPARE_API_KEY;
     
-    // Обязательно добавляем TRX в список основных монет для гарантированного отображения
-    const majorCoins = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'MATIC', 'TRX'];
+    // Фиксированный список монет для анализа (топ-70 по капитализации, без стейблкоинов)
+    const fixedCoinsList = [
+      // Топ-10 по капитализации
+      'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'MATIC',
+      // Обязательно добавляем TRX
+      'TRX',
+      // Остальные популярные альткоины (топ-50)
+      'LINK', 'XLM', 'ATOM', 'UNI', 'ALGO', 'NEAR', 'VET', 'FIL', 'XTZ', 'AAVE',
+      'EOS', 'EGLD', 'SAND', 'THETA', 'AXS', 'MANA', 'QNT', 'CRO', 'APE', 'GRT',
+      'KCS', 'FTM', 'XMR', 'FLOW', 'LDO', 'HT', 'CHZ', 'APT', 'IMX', 'SNX',
+      'ONE', 'ENJ', 'LRC', 'BAT', 'ZIL', 'ROSE', 'NEO', 'ZRX', 'STX', 'ONT',
+      'DASH', 'ZEC', 'GMT', 'AR', 'OP', 'COMP', 'GALA', 'FET', 'XEM', 'KAVA',
+      // Дополняем до 70
+      'RSR', 'BTT', 'HOT', 'CELR', 'TRB', 'RVN', 'SXP', 'STORJ', 'SC', 'KSM'
+    ];
+    
+    // Используем фиксированный список монет вместо получения списка из API
+    const majorCoins = fixedCoinsList;
     const majorCoinsList = majorCoins.join(',');
     
     const majorCoinsUrl = 'https://min-api.cryptocompare.com/data/pricemultifull';
