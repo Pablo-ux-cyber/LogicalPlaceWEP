@@ -29,7 +29,7 @@ type BuySignal = {
 };
 
 // ID группы для отправки сигналов
-const TARGET_GROUP_CHAT_ID = '@logicalplace';
+const TARGET_GROUP_CHAT_ID = process.env.TELEGRAM_TARGET_GROUP_ID || '@logicalplace';
 
 // Инициализация бота
 const token = process.env.TELEGRAM_BOT_TOKEN || '';

@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-const LOG_DIR = 'logs';
+// Используем путь из переменной окружения или по умолчанию из текущей директории
+const LOG_DIR = process.env.LOGS_DIR || 'logs';
 const SIGNAL_LOG_FILE = 'signals.log';
 const CHECK_LOG_FILE = 'checks.log';
 const ERROR_LOG_FILE = 'errors.log';

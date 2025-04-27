@@ -1,0 +1,17 @@
+# Токен Telegram бота
+TELEGRAM_BOT_TOKEN=7595709378:AAGTOjLQu2s1tN_fP7a_nZ4Z5WO89RcbVh8
+
+# API ключ CryptoCompare
+CRYPTOCOMPARE_API_KEY=2193d3ce789e90e474570058a3a96caa0d585ca0d0d0e62687a295c8402d29e9
+
+# URL вашего приложения
+APP_URL=https://imm2.dinet.fvds.ru
+
+# Настройки для логирования
+LOGS_DIR=/var/www/html/logicalplacewep/logs
+
+# ID группы в Telegram для отправки сигналов
+TELEGRAM_TARGET_GROUP_ID=@logicalplace
+
+# Порт для приложения
+PORT=5002
