@@ -26,8 +26,25 @@ export async function fetchTopCryptos(limit: number = 100): Promise<CryptoCurren
   try {
     const apiKey = process.env.CRYPTOCOMPARE_API_KEY;
     
-    // Обязательно добавляем TRX в список основных монет для гарантированного отображения
-    const majorCoins = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'MATIC', 'TRX'];
+    // Используем только указанный пользователем список монет
+    const majorCoins = [
+      'BTC', 'ETH', 'XRP', 'BNB', 'SOL', 'DOGE', 'ADA', 'TRX',
+      'SUI', 'LINK', 'AVAX', 'XLM', 'LEO', 'TON', 'SHIB', 'HBAR',
+      'BCH', 'LTC', 'DOT', 'HYPE',
+      'BGB', 'PI', 'XMR',
+      'CBBTC', 'PEPE', 'UNI', 'APT', 'OKB', 'NEAR', 'TAO', 'ONDO', 'TRUMP', 'GT', 'ICP',
+      'ETC', 'AAVE', 'KAS', 'CRO', 'MNT', 'VET', 'RENDER',
+      'POL', 'ATOM', 'ENA',
+      'FET', 'ALGO', 'FTN', 'FIL', 'TIA',
+      'ARB',
+      'WLD', 'BONK',
+      'STX', 'JUP', 'KCS', 'OP', 'MKR',
+      'NEXO', 'QNT', 'FARTCOIN', 'IMX', 'IP',
+      'FLR', 'SEI', 'EOS', 'INJ',
+      'GRT',
+      'CRV',
+      'RAY'
+    ];
     const majorCoinsList = majorCoins.join(',');
     
     const majorCoinsUrl = 'https://min-api.cryptocompare.com/data/pricemultifull';
