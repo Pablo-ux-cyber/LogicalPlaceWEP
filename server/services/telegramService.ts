@@ -112,7 +112,8 @@ export function sendBuySignal(signal: BuySignal) {
   const message = `✨ <b>${signal.symbol}</b> | BUY SIGNAL ✨
 
 📌 Price: $${signal.price.toFixed(2)}
-📉 BB (1W): $${signal.bbLowerWeekly.toFixed(2)}
+📉 BB Daily: $${signal.bbLowerDaily.toFixed(2)}
+📉 BB Weekly: $${signal.bbLowerWeekly.toFixed(2)}
 
 🔍 <a href="${chartUrl}">View Chart</a>`;
 
@@ -144,7 +145,7 @@ export function sendTestMessage() {
       symbol: 'SOL',
       price: 147.82,
       time: new Date(),
-      bbLowerDaily: 0, // Не используется в этой версии
+      bbLowerDaily: 138.25,
       bbLowerWeekly: 142.35
     };
     
@@ -248,42 +249,57 @@ export async function checkBuySignals(cryptoSymbols: string[]) {
       try {
         console.log(`Проверка ${symbol}...`);
         
-        // Получаем данные только недельного таймфрейма
+        // Получаем данные недельного таймфрейма
         const weeklyData = await fetchCryptoPriceData(symbol, '1w');
         
+        // Получаем также данные дневного таймфрейма
+        const dailyData = await fetchCryptoPriceData(symbol, '1d');
+        
         // Проверяем наличие данных
-        if (!weeklyData.candles.length) {
+        if (!weeklyData.candles.length || !dailyData.candles.length) {
           const noDataMessage = `Нет данных для ${symbol}. Пропускаем.`;
           console.warn(noDataMessage);
           logError(symbol, noDataMessage);
           return { success: false, error: true, signal: false };
         }
         
-        // Получаем последнюю свечу недельного таймфрейма
+        // Получаем последние свечи
         const lastWeeklyCandle = weeklyData.candles[weeklyData.candles.length - 1];
+        const lastDailyCandle = dailyData.candles[dailyData.candles.length - 1];
         
-        // Рассчитываем полосы Боллинджера для недельного таймфрейма
+        // Рассчитываем полосы Боллинджера для обоих таймфреймов
         const weeklyBB = calculateBollingerBands(weeklyData.candles);
+        const dailyBB = calculateBollingerBands(dailyData.candles);
         
-        if (!weeklyBB.length) {
+        if (!weeklyBB.length || !dailyBB.length) {
           const noBBMessage = `Не удалось рассчитать полосы Боллинджера для ${symbol}. Пропускаем.`;
           console.warn(noBBMessage);
           logError(symbol, noBBMessage);
           return { success: false, error: true, signal: false };
         }
         
-        // Получаем значения полос для последней свечи
+        // Получаем значения полос для последних свечей
         const lastWeeklyBB = weeklyBB[weeklyBB.length - 1];
+        const lastDailyBB = dailyBB[dailyBB.length - 1];
         
-        // Проверяем условие для сигнала на покупку - только недельный таймфрейм
-        const currentPrice = lastWeeklyCandle.close;
+        // Текущая цена (берем из последней дневной свечи, она более актуальна)
+        const currentPrice = lastDailyCandle.close;
         const bbLowerWeekly = lastWeeklyBB.lower;
+        const bbLowerDaily = lastDailyBB.lower;
         
-        // Сигнал возникает когда цена ниже недельной нижней полосы Боллинджера
-        const isBuySignal = currentPrice <= bbLowerWeekly;
+        // Проверяем дневной и недельный BB, как в PineScript:
+        // entry_condition = source <= bb_lower_d and source <= bb_lower_w
+        const isPriceBelowDailyBB = currentPrice <= bbLowerDaily;
+        const isPriceBelowWeeklyBB = currentPrice <= bbLowerWeekly;
         
-        // Логируем результат проверки
-        logCryptoCheck(symbol, currentPrice, bbLowerWeekly, isBuySignal);
+        // Логируем данные для отладки
+        console.log(`${symbol}: Цена ${currentPrice.toFixed(4)} ${isPriceBelowDailyBB ? '<=' : '>'} BB Daily ${bbLowerDaily.toFixed(4)}, ${isPriceBelowWeeklyBB ? '<=' : '>'} BB Weekly ${bbLowerWeekly.toFixed(4)}`);
+        
+        // Сигнал возникает когда цена ниже ОБОИХ уровней - дневного И недельного
+        const isBuySignal = isPriceBelowDailyBB && isPriceBelowWeeklyBB;
+        
+        // Логируем результат проверки с информацией о дневной и недельной полосе
+        logCryptoCheck(symbol, currentPrice, bbLowerWeekly, isBuySignal, bbLowerDaily);
         
         if (isBuySignal) {
           // Дополнительная проверка - исключаем нежелательные криптовалюты из сигналов
@@ -311,12 +327,12 @@ export async function checkBuySignals(cryptoSymbols: string[]) {
           console.log(signalMessage);
           logToFile(signalMessage, 'signals');
           
-          // Отправляем сигнал
+          // Отправляем сигнал с данными дневной и недельной полосы Боллинджера
           sendBuySignal({
             symbol,
             price: currentPrice,
-            time: new Date(lastWeeklyCandle.time * 1000),
-            bbLowerDaily: 0, // Не используется в этой версии
+            time: new Date(lastDailyCandle.time * 1000),
+            bbLowerDaily,
             bbLowerWeekly
           });
           
