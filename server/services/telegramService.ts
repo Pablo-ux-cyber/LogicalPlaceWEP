@@ -226,71 +226,120 @@ export async function checkBuySignals(cryptoSymbols: string[]) {
   let successCount = 0;
   let errorCount = 0;
   let signalCount = 0;
-
-  // Проверяем каждую криптовалюту
-  for (const symbol of cryptoSymbols) {
-    try {
-      console.log(`Проверка ${symbol}...`);
-      
-      // Получаем данные только недельного таймфрейма
-      const weeklyData = await fetchCryptoPriceData(symbol, '1w');
-      
-      // Проверяем наличие данных
-      if (!weeklyData.candles.length) {
-        const noDataMessage = `Нет данных для ${symbol}. Пропускаем.`;
-        console.warn(noDataMessage);
-        logError(symbol, noDataMessage);
-        continue;
-      }
-      
-      // Получаем последнюю свечу недельного таймфрейма
-      const lastWeeklyCandle = weeklyData.candles[weeklyData.candles.length - 1];
-      
-      // Рассчитываем полосы Боллинджера для недельного таймфрейма
-      const weeklyBB = calculateBollingerBands(weeklyData.candles);
-      
-      if (!weeklyBB.length) {
-        const noBBMessage = `Не удалось рассчитать полосы Боллинджера для ${symbol}. Пропускаем.`;
-        console.warn(noBBMessage);
-        logError(symbol, noBBMessage);
-        continue;
-      }
-      
-      // Получаем значения полос для последней свечи
-      const lastWeeklyBB = weeklyBB[weeklyBB.length - 1];
-      
-      // Проверяем условие для сигнала на покупку - только недельный таймфрейм
-      const currentPrice = lastWeeklyCandle.close;
-      const bbLowerWeekly = lastWeeklyBB.lower;
-      
-      // Сигнал возникает когда цена ниже недельной нижней полосы Боллинджера
-      const isBuySignal = currentPrice <= bbLowerWeekly;
-      
-      // Логируем результат проверки
-      logCryptoCheck(symbol, currentPrice, bbLowerWeekly, isBuySignal);
-      
-      if (isBuySignal) {
-        const signalMessage = `⚠️ Найден сигнал на покупку для ${symbol}!`;
-        console.log(signalMessage);
-        logToFile(signalMessage, 'signals');
-        signalCount++;
+  
+  // Определяем размер пакета для одновременной обработки
+  const batchSize = 5; // Обрабатываем по 5 монет одновременно
+  
+  // Разбиваем весь список на пакеты
+  for (let i = 0; i < cryptoSymbols.length; i += batchSize) {
+    // Берем текущий пакет монет (не более batchSize)
+    const batch = cryptoSymbols.slice(i, i + batchSize);
+    
+    console.log(`Обработка пакета ${Math.floor(i / batchSize) + 1}/${Math.ceil(cryptoSymbols.length / batchSize)} - ${batch.join(', ')}...`);
+    
+    // Запускаем проверку всех монет в текущем пакете параллельно
+    const batchPromises = batch.map(async (symbol) => {
+      try {
+        console.log(`Проверка ${symbol}...`);
         
-        // Отправляем сигнал
-        sendBuySignal({
-          symbol,
-          price: currentPrice,
-          time: new Date(lastWeeklyCandle.time * 1000),
-          bbLowerDaily: 0, // Не используется в этой версии
-          bbLowerWeekly
-        });
+        // Получаем данные только недельного таймфрейма
+        const weeklyData = await fetchCryptoPriceData(symbol, '1w');
+        
+        // Проверяем наличие данных
+        if (!weeklyData.candles.length) {
+          const noDataMessage = `Нет данных для ${symbol}. Пропускаем.`;
+          console.warn(noDataMessage);
+          logError(symbol, noDataMessage);
+          return { success: false, error: true, signal: false };
+        }
+        
+        // Получаем последнюю свечу недельного таймфрейма
+        const lastWeeklyCandle = weeklyData.candles[weeklyData.candles.length - 1];
+        
+        // Рассчитываем полосы Боллинджера для недельного таймфрейма
+        const weeklyBB = calculateBollingerBands(weeklyData.candles);
+        
+        if (!weeklyBB.length) {
+          const noBBMessage = `Не удалось рассчитать полосы Боллинджера для ${symbol}. Пропускаем.`;
+          console.warn(noBBMessage);
+          logError(symbol, noBBMessage);
+          return { success: false, error: true, signal: false };
+        }
+        
+        // Получаем значения полос для последней свечи
+        const lastWeeklyBB = weeklyBB[weeklyBB.length - 1];
+        
+        // Проверяем условие для сигнала на покупку - только недельный таймфрейм
+        const currentPrice = lastWeeklyCandle.close;
+        const bbLowerWeekly = lastWeeklyBB.lower;
+        
+        // Сигнал возникает когда цена ниже недельной нижней полосы Боллинджера
+        const isBuySignal = currentPrice <= bbLowerWeekly;
+        
+        // Логируем результат проверки
+        logCryptoCheck(symbol, currentPrice, bbLowerWeekly, isBuySignal);
+        
+        if (isBuySignal) {
+          // Дополнительная проверка - исключаем нежелательные криптовалюты из сигналов
+          const excludedCoins = [
+            // Стейблкоины, которые могли пропустить первичную фильтрацию
+            'USDT', 'USDC', 'DAI', 'BUSD', 'TUSD', 'GUSD', 'USDD', 'USDP', 'FRAX', 'LUSD',
+            // Врапнутые токены и их вариации
+            'WBTC', 'WETH', 'WBNB', 'WAVAX', 'WMATIC', 'WFTM', 'WSOL', 'WTRX', 'WONE', 'WRUNE'
+          ];
+          
+          // Также исключаем монеты с подозрительными паттернами в названии
+          const suspiciousPatterns = ['USD', 'wrapped', 'pegged', 'stable', 'cash'];
+          
+          if (excludedCoins.includes(symbol.toUpperCase())) {
+            console.log(`Сигнал для ${symbol} был отфильтрован, так как монета находится в списке исключений`);
+            return { success: true, error: false, signal: false };
+          }
+          
+          if (suspiciousPatterns.some(pattern => symbol.toLowerCase().includes(pattern.toLowerCase()))) {
+            console.log(`Сигнал для ${symbol} был отфильтрован из-за подозрительного названия`);
+            return { success: true, error: false, signal: false };
+          }
+          
+          const signalMessage = `⚠️ Найден сигнал на покупку для ${symbol}!`;
+          console.log(signalMessage);
+          logToFile(signalMessage, 'signals');
+          
+          // Отправляем сигнал
+          sendBuySignal({
+            symbol,
+            price: currentPrice,
+            time: new Date(lastWeeklyCandle.time * 1000),
+            bbLowerDaily: 0, // Не используется в этой версии
+            bbLowerWeekly
+          });
+          
+          return { success: true, error: false, signal: true };
+        }
+        
+        return { success: true, error: false, signal: false };
+      } catch (error) {
+        const errorMessage = `Ошибка при проверке сигналов для ${symbol}: ${error}`;
+        console.error(errorMessage);
+        logError(symbol, String(error));
+        return { success: false, error: true, signal: false };
       }
-      
-      successCount++;
-    } catch (error) {
-      errorCount++;
-      const errorMessage = `Ошибка при проверке сигналов для ${symbol}: ${error}`;
-      console.error(errorMessage);
-      logError(symbol, String(error));
+    });
+    
+    // Ждем завершения всех проверок в текущем пакете
+    const batchResults = await Promise.all(batchPromises);
+    
+    // Подсчитываем результаты текущего пакета
+    batchResults.forEach(result => {
+      if (result.success) successCount++;
+      if (result.error) errorCount++;
+      if (result.signal) signalCount++;
+    });
+    
+    // Добавляем небольшую паузу между пакетами, чтобы не перегрузить API и сервер
+    if (i + batchSize < cryptoSymbols.length) {
+      console.log(`Пауза между пакетами (2 секунды)...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
   

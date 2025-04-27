@@ -35,11 +35,14 @@ export function initScheduler() {
     console.log('Запуск первоначальной проверки сигналов на покупку');
     
     try {
-      // Получаем список топ-10 криптовалют для первоначальной проверки
-      const cryptos = await fetchTopCryptos(10);
+      // Получаем все доступные криптовалюты для первоначальной проверки
+      // Запрашиваем до 100 монет, включая основные и дополнительные
+      const cryptos = await fetchTopCryptos(100);
       const symbols = cryptos.map(crypto => crypto.id);
       
-      // Запускаем проверку сигналов
+      console.log(`Получено ${symbols.length} криптовалют для проверки (включая основные)`);
+      
+      // Запускаем проверку сигналов для всех доступных монет
       await checkBuySignals(symbols);
       
       console.log('Первоначальная проверка завершена успешно');
