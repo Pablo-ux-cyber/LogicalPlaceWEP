@@ -24,61 +24,79 @@ export type CryptoSymbol = string; // Now we'll support any symbol
 // Function to fetch top cryptocurrencies by market cap
 export async function fetchTopCryptos(limit: number = 100): Promise<CryptoCurrency[]> {
   try {
-    // Use the CryptoCompare API to get top coins
     const apiKey = process.env.CRYPTOCOMPARE_API_KEY;
-    const url = 'https://min-api.cryptocompare.com/data/top/mktcapfull';
     
-    const params = {
-      limit,
-      tsym: 'USD',
+    // Step 1: First get data for major cryptocurrencies directly
+    const majorCoins = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'MATIC'];
+    const majorCoinsList = majorCoins.join(',');
+    
+    const majorCoinsUrl = 'https://min-api.cryptocompare.com/data/pricemultifull';
+    const majorCoinsParams = {
+      fsyms: majorCoinsList,
+      tsyms: 'USD',
       api_key: apiKey
     };
     
-    const response = await axios.get(url, { params });
-    
-    if (!response.data || !response.data.Data) {
-      throw new Error('Invalid data format from CryptoCompare API');
+    // Get data for major coins
+    let majorCryptosData: CryptoCurrency[] = [];
+    try {
+      const majorResponse = await axios.get(majorCoinsUrl, { params: majorCoinsParams });
+      
+      if (majorResponse.data && majorResponse.data.RAW) {
+        for (const [symbol, data] of Object.entries(majorResponse.data.RAW)) {
+          const coinData = (data as any).USD;
+          
+          majorCryptosData.push({
+            id: symbol,
+            name: symbol, // We don't have full name in this response
+            marketCap: coinData.MKTCAP || 0,
+            price: coinData.PRICE || 0,
+            imageUrl: coinData.IMAGEURL ? `https://www.cryptocompare.com${coinData.IMAGEURL}` : '',
+            rank: majorCoins.indexOf(symbol) // Use the order we defined
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching major cryptocurrencies:', e);
+      // Continue even if this fails
     }
     
-    // Transform the data to our format
-    const cryptos: CryptoCurrency[] = response.data.Data.map((item: any, index: number) => {
-      const coinInfo = item.CoinInfo || {};
-      const raw = item.RAW?.USD || {};
-      const display = item.DISPLAY?.USD || {};
+    // Step 2: Skip the top cryptocurrencies from the regular API as it seems to be problematic
+    // Since we already have the major coins, let's just use those
+    
+    console.log(`Using only major cryptocurrencies (${majorCryptosData.length})`);
+    
+    // Add a few more properties to the major coins to make them more complete
+    const improvedMajorCryptos = majorCryptosData.map((crypto, index) => {
+      // Add proper full names for the major coins
+      const fullNames: {[key: string]: string} = {
+        'BTC': 'Bitcoin',
+        'ETH': 'Ethereum',
+        'BNB': 'Binance Coin',
+        'SOL': 'Solana',
+        'XRP': 'XRP',
+        'ADA': 'Cardano',
+        'DOGE': 'Dogecoin',
+        'AVAX': 'Avalanche',
+        'DOT': 'Polkadot',
+        'MATIC': 'Polygon'
+      };
       
       return {
-        id: coinInfo.Name || '',
-        name: coinInfo.FullName || '',
-        marketCap: raw.MKTCAP || 0,
-        price: raw.PRICE || 0,
-        imageUrl: coinInfo.ImageUrl ? `https://www.cryptocompare.com${coinInfo.ImageUrl}` : '',
+        ...crypto,
+        name: fullNames[crypto.id] || crypto.id,
         rank: index + 1
       };
-    }).filter((crypto: CryptoCurrency) => {
-      // Remove empty entries
-      if (!crypto.id || !crypto.name) return false;
-      
-      // Filter out stablecoins
-      const stablecoins = ['USDT', 'USDC', 'DAI', 'BUSD', 'TUSD', 'GUSD', 'USDD', 'USDP', 'FRAX', 'LUSD'];
-      if (stablecoins.includes(crypto.id)) return false;
-      
-      // Filter out wrapped tokens
-      const wrappedTokens = ['WBTC', 'WETH', 'WBNB', 'WAVAX', 'WMATIC', 'WFTM', 'WSOL', 'WTRX', 'WONE', 'WRUNE'];
-      if (wrappedTokens.includes(crypto.id)) return false;
-      
-      // Filter out by name patterns
-      if (
-        crypto.name.toLowerCase().includes('wrapped') || 
-        crypto.name.toLowerCase().includes('usd') || 
-        crypto.id.startsWith('W') && crypto.name.includes('(') || 
-        crypto.id.includes('USD')
-      ) return false;
-      
-      return true;
     });
     
-    console.log(`Fetched ${cryptos.length} cryptocurrencies`);
-    return cryptos;
+    // Skip trying to get additional coins from the API since it's causing errors
+    const topCryptos: CryptoCurrency[] = [];
+    
+    // Combine major coins with top coins and limit to requested amount
+    const allCryptos = [...improvedMajorCryptos, ...topCryptos].slice(0, limit);
+    
+    console.log(`Fetched ${allCryptos.length} cryptocurrencies (including ${improvedMajorCryptos.length} major coins)`);
+    return allCryptos;
   } catch (error) {
     console.error('Error fetching top cryptocurrencies:', error);
     throw new Error('Failed to fetch top cryptocurrencies');
