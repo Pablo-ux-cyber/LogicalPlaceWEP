@@ -26,20 +26,16 @@ export async function fetchTopCryptos(limit: number = 100): Promise<CryptoCurren
   try {
     const apiKey = process.env.CRYPTOCOMPARE_API_KEY;
     
-    // Фиксированный список монет для анализа (топ-70 по капитализации, без стейблкоинов)
+    // Фиксированный список монет для анализа, согласно требованиям
     const fixedCoinsList = [
-      // Топ-10 по капитализации
-      'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'MATIC',
-      // Обязательно добавляем TRX
-      'TRX',
-      // Остальные популярные альткоины (топ-50)
-      'LINK', 'XLM', 'ATOM', 'UNI', 'ALGO', 'NEAR', 'VET', 'FIL', 'XTZ', 'AAVE',
-      'EOS', 'EGLD', 'SAND', 'THETA', 'AXS', 'MANA', 'QNT', 'CRO', 'APE', 'GRT',
-      'KCS', 'FTM', 'XMR', 'FLOW', 'LDO', 'HT', 'CHZ', 'APT', 'IMX', 'SNX',
-      'ONE', 'ENJ', 'LRC', 'BAT', 'ZIL', 'ROSE', 'NEO', 'ZRX', 'STX', 'ONT',
-      'DASH', 'ZEC', 'GMT', 'AR', 'OP', 'COMP', 'GALA', 'FET', 'XEM', 'KAVA',
-      // Дополняем до 70
-      'RSR', 'BTT', 'HOT', 'CELR', 'TRB', 'RVN', 'SXP', 'STORJ', 'SC', 'KSM'
+      // Топ монеты по капитализации
+      'BTC', 'ETH', 'XRP', 'BNB', 'SOL', 'DOGE', 'ADA', 'TRX', 'SUI', 'LINK',
+      'AVAX', 'XLM', 'LEO', 'TON', 'SHIB', 'HBAR', 'BCH', 'LTC', 'DOT', 'HYPE',
+      'BGB', 'PI', 'XMR', 'CBBTC', 'PEPE', 'UNI', 'APT', 'OKB', 'NEAR', 'TAO',
+      'ONDO', 'TRUMP', 'GT', 'ICP', 'ETC', 'AAVE', 'KAS', 'CRO', 'MNT', 'VET',
+      'RENDER', 'POL', 'ATOM', 'ENA', 'FET', 'ALGO', 'FTN', 'FIL', 'TIA', 'ARB',
+      'WLD', 'BONK', 'STX', 'JUP', 'KCS', 'OP', 'MKR', 'NEXO', 'QNT', 'FARTCOIN',
+      'IMX', 'IP', 'FLR', 'SEI', 'EOS', 'INJ', 'GRT', 'CRV', 'RAY'
     ];
     
     // Используем фиксированный список монет вместо получения списка из API
