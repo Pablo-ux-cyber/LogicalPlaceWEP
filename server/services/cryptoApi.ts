@@ -215,7 +215,7 @@ export async function fetchCryptoPriceData(symbol: CryptoSymbol, timeframe: stri
     
     // Define parameters based on timeframe
     let url = 'https://min-api.cryptocompare.com/data/v2/histoday';
-    let limit = 2000; // Maximum allowed by the API
+    let limit = 2000; // Maximum allowed by the API for daily
     let aggregate = 1;
     
     if (timeframe === '1h') {
@@ -223,7 +223,9 @@ export async function fetchCryptoPriceData(symbol: CryptoSymbol, timeframe: stri
     } else if (timeframe === '1d' || timeframe === 'daily') {
       // Already using histoday
     } else if (timeframe === '1w' || timeframe === 'weekly') {
-      // For weekly, we'll use daily data and aggregate it
+      // Для недельного таймфрейма нам нужно иметь минимум 20 недель данных
+      // для правильного расчета Bollinger Bands (согласно PineScript)
+      limit = 300; // Больше недельных данных для корректного расчета BB
       aggregate = 7; // Aggregate 7 days to get weekly data
     } else {
       console.warn(`Unknown timeframe: ${timeframe}, defaulting to daily`);
@@ -294,7 +296,7 @@ export async function fetchCryptoPriceData(symbol: CryptoSymbol, timeframe: stri
     console.error(`Error fetching data for ${symbol}:`, error);
     
     // Try to use fallback method to get weekly data if the error is specific to that
-    if ((timeframe === '1w' || timeframe === 'weekly') && error.toString().includes('weekly')) {
+    if ((timeframe === '1w' || timeframe === 'weekly') && String(error).includes('weekly')) {
       console.log('Trying fallback to daily data for weekly timeframe');
       try {
         return await fetchDailyDataForWeekly(symbol);
