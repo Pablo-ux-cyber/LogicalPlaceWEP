@@ -54,31 +54,37 @@ export function initTelegramBot() {
       const chatId = msg.chat.id;
       const firstName = msg.from?.first_name || 'пользователь';
       
-      bot.sendMessage(
-        chatId,
-        `Привет, ${firstName}! Бот настроен на отправку сигналов в группу @logicalplace при обнаружении сигналов на покупку, когда цена опустится ниже нижней границы полос Боллинджера на дневном и недельном таймфреймах.`
-      );
+      if (bot) {
+        bot.sendMessage(
+          chatId,
+          `Привет, ${firstName}! Бот настроен на отправку сигналов в группу @logicalplace при обнаружении сигналов на покупку, когда цена опустится ниже нижней границы полос Боллинджера на дневном и недельном таймфреймах.`
+        );
+      }
     });
 
     // Обработчик команды /status
     bot.onText(/\/status/, (msg: any) => {
       const chatId = msg.chat.id;
-      bot.sendMessage(
-        chatId,
-        `Бот активен и проверяет сигналы каждый день в 08:00 UTC для всех монет из списка топ-100 по рыночной капитализации. Сигналы отправляются в группу @logicalplace.`
-      );
+      if (bot) {
+        bot.sendMessage(
+          chatId,
+          `Бот активен и проверяет сигналы каждый день в 08:00 UTC для всех монет из списка топ-100 по рыночной капитализации. Сигналы отправляются в группу @logicalplace.`
+        );
+      }
     });
 
     // Обработчик команды /help
     bot.onText(/\/help/, (msg: any) => {
       const chatId = msg.chat.id;
-      bot.sendMessage(
-        chatId,
-        `Доступные команды:
+      if (bot) {
+        bot.sendMessage(
+          chatId,
+          `Доступные команды:
 /start - Информация о боте
 /status - Проверить статус бота
 /help - Показать эту справку`
-      );
+        );
+      }
     });
 
     return bot;
