@@ -1,0 +1,54 @@
+(venv) root@imm1:/var/www/html/logicalplacewep# # Убедитесь, что у вас установлен Node.js и npm
+npm install
+npm warn deprecated request@2.88.2: request has been deprecated, see https://github.com/request/request/issues/3142
+npm warn deprecated har-validator@5.1.5: this library is no longer supported
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+npm warn deprecated uuid@3.4.0: Please upgrade  to version 7 or higher.  Older versions may use Math.random() in certain circumstances, which is known to be problematic.  See https://v8.dev/blog/math-random for details.
+
+added 647 packages, and audited 648 packages in 11s
+
+126 packages are looking for funding
+  run `npm fund` for details
+
+12 moderate severity vulnerabilities
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+(venv) root@imm1:/var/www/html/logicalplacewep# 
+(venv) root@imm1:/var/www/html/logicalplacewep# 
+(venv) root@imm1:/var/www/html/logicalplacewep# 
+(venv) root@imm1:/var/www/html/logicalplacewep# mkdir -p logs
+chmod 755 logs
+(venv) root@imm1:/var/www/html/logicalplacewep# npm run dev
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+TELEGRAM_BOT_TOKEN не задан. Telegram-бот не будет запущен.
+node:events:496
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use 0.0.0.0:5000
+    at Server.setupListenHandle [as _listen2] (node:net:1939:16)
+    at listenInCluster (node:net:1996:12)
+    at node:net:2205:7
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1975:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 5000
+}
+
+Node.js v22.15.0
+(venv) root@imm1:/var/www/html/logicalplacewep# 
