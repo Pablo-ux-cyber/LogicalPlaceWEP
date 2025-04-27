@@ -276,20 +276,60 @@ export async function fetchTopCryptos(limit: number = 100): Promise<CryptoCurren
       console.log('Failed to get additional cryptocurrencies from API, using predefined list');
       
       // Если произошла ошибка при запросе к API, используем предопределенный список
-      // и добавим для каждой монеты значения по умолчанию, чтобы отображались цены и иконки
-      topCryptos = additionalCoins
+      // и делаем отдельные запросы для получения реальных данных о ценах и капитализации
+      const additionalCryptoPromises = additionalCoins
         .filter(coin => !majorCoins.includes(coin.id))
-        .map((coin, index) => {
-          // Создаем объект криптовалюты с заглушечными данными, чтобы отображалось в интерфейсе
-          return {
-            id: coin.id,
-            name: coin.name,
-            marketCap: 1000000 + index * 10000, // Примерная капитализация для сортировки
-            price: 1 + (index % 10) / 10,       // Примерная цена для отображения
-            imageUrl: `https://cryptocompare.com/media/37746251/crypto.png`, // Стандартная иконка
-            rank: index + improvedMajorCryptos.length + 1
-          };
+        .map(async (coin, index) => {
+          try {
+            // Делаем запрос для получения реальных данных по каждой монете
+            const singleCoinUrl = 'https://min-api.cryptocompare.com/data/pricemultifull';
+            const singleCoinParams = {
+              fsyms: coin.id,
+              tsyms: 'USD',
+              api_key: apiKey
+            };
+            
+            const response = await axios.get(singleCoinUrl, { params: singleCoinParams });
+            
+            // Проверяем валидность ответа
+            if (response.data && response.data.RAW && response.data.RAW[coin.id] && response.data.RAW[coin.id].USD) {
+              const coinData = response.data.RAW[coin.id].USD;
+              
+              return {
+                id: coin.id,
+                name: coin.name,
+                marketCap: coinData.MKTCAP || 0,
+                price: coinData.PRICE || 0,
+                imageUrl: coinData.IMAGEURL ? `https://www.cryptocompare.com${coinData.IMAGEURL}` : '',
+                rank: index + improvedMajorCryptos.length + 1
+              };
+            } else {
+              // Если данные не получены, создаем запись с минимальными данными
+              return {
+                id: coin.id,
+                name: coin.name,
+                marketCap: 0,
+                price: 0,
+                imageUrl: '',
+                rank: index + improvedMajorCryptos.length + 1
+              };
+            }
+          } catch (err) {
+            // В случае ошибки, создаем запись с минимальными данными
+            console.log(`Error fetching data for ${coin.id}: ${err}`);
+            return {
+              id: coin.id,
+              name: coin.name,
+              marketCap: 0,
+              price: 0,
+              imageUrl: '',
+              rank: index + improvedMajorCryptos.length + 1
+            };
+          }
         });
+      
+      // Ждем завершения всех запросов
+      topCryptos = await Promise.all(additionalCryptoPromises);
         
       console.log(`Using ${topCryptos.length} predefined additional cryptocurrencies`);
     }
