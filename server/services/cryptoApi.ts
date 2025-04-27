@@ -26,8 +26,8 @@ export async function fetchTopCryptos(limit: number = 100): Promise<CryptoCurren
   try {
     const apiKey = process.env.CRYPTOCOMPARE_API_KEY;
     
-    // Step 1: First get data for major cryptocurrencies directly
-    const majorCoins = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'MATIC'];
+    // Обязательно добавляем TRX в список основных монет для гарантированного отображения
+    const majorCoins = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'MATIC', 'TRX'];
     const majorCoinsList = majorCoins.join(',');
     
     const majorCoinsUrl = 'https://min-api.cryptocompare.com/data/pricemultifull';
@@ -75,7 +75,8 @@ export async function fetchTopCryptos(limit: number = 100): Promise<CryptoCurren
       'DOGE': 'Dogecoin',
       'AVAX': 'Avalanche',
       'DOT': 'Polkadot',
-      'MATIC': 'Polygon'
+      'MATIC': 'Polygon',
+      'TRX': 'TRON'
     };
     
     // Improve our major cryptocurrencies with proper names
