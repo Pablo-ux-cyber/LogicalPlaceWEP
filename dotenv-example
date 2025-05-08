@@ -1,17 +1,19 @@
+# Пример файла .env - скопируйте и переименуйте в .env, затем заполните своими значениями
+
 # Токен Telegram бота
-TELEGRAM_BOT_TOKEN=7595709378:AAGTOjLQu2s1tN_fP7a_nZ4Z5WO89RcbVh8
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 
 # API ключ CryptoCompare
-CRYPTOCOMPARE_API_KEY=2193d3ce789e90e474570058a3a96caa0d585ca0d0d0e62687a295c8402d29e9
+CRYPTOCOMPARE_API_KEY=your_cryptocompare_api_key_here
 
 # URL вашего приложения
-APP_URL=https://imm2.dinet.fvds.ru
+APP_URL=your_app_url_here
 
 # Настройки для логирования
-LOGS_DIR=/var/www/html/logicalplacewep/logs
+LOGS_DIR=path_to_logs_directory
 
-# ID группы в Telegram для отправки сигналов
-TELEGRAM_TARGET_GROUP_ID=@logicalplace
+# ID группы в Telegram для отправки сигналов 
+TELEGRAM_TARGET_GROUP_ID=@your_telegram_group
 
 # Порт для приложения
 PORT=5002
