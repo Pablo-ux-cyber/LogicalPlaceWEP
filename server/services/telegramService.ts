@@ -135,8 +135,8 @@ export function sendTestMessage() {
     return false;
   }
 
-  // Всегда отправляем пример сигнала по Solana (для тестирования)
-  const isExampleSignal = true;
+  // Отключаем автоматическую отправку тестовых сигналов
+  const isExampleSignal = false;
   
   if (isExampleSignal) {
     // Отправляем пример сигнала для SOL
