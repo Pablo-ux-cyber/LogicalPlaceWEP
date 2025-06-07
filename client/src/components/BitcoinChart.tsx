@@ -62,6 +62,29 @@ const BitcoinChart = ({ candleData, volumeData, indicatorData = [], isLoading, e
     }
   };
 
+  // Function to navigate to March 2025 signal specifically
+  const goToMarch2025Signal = () => {
+    if (!indicatorData.length) return;
+    
+    // Find the March 2025 signal (timestamp 1743379200)
+    const march2025Index = indicatorData.findIndex(indicator => 
+      indicator.time === 1743379200 && indicator.entrySignal
+    );
+    
+    if (march2025Index !== -1) {
+      console.log(`Navigating to March 2025 signal at index ${march2025Index}`);
+      const range = 50;
+      
+      setViewState({
+        startIndex: Math.max(0, march2025Index - range / 2),
+        endIndex: Math.min(candleData.length - 1, march2025Index + range / 2),
+        scale: 1
+      });
+    } else {
+      console.log('March 2025 signal not found');
+    }
+  };
+
   // Initialize view state when data changes
   useEffect(() => {
     if (candleData.length > 0) {
@@ -337,9 +360,15 @@ const BitcoinChart = ({ candleData, volumeData, indicatorData = [], isLoading, e
         </label>
         <button
           onClick={goToSignals}
-          className="w-full px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white text-xs rounded"
+          className="w-full px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white text-xs rounded mb-1"
         >
           Find Signals ({indicatorData.filter(ind => ind.entrySignal).length})
+        </button>
+        <button
+          onClick={goToMarch2025Signal}
+          className="w-full px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded"
+        >
+          March 31, 2025
         </button>
       </div>
 
