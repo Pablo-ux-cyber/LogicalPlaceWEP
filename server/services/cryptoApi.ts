@@ -21,81 +21,6 @@ export interface CryptoCurrency {
 
 export type CryptoSymbol = string; // Now we'll support any symbol
 
-/**
- * Aggregate daily candles into weekly candles like TradingView
- * Week starts on Monday and ends on Sunday
- */
-function aggregateDailyToWeekly(dailyData: CryptoResponse[]) {
-  const weeklyCandles = [];
-  const weeklyVolumes = [];
-  
-  // Group daily candles by week (Monday to Sunday)
-  let currentWeek: CryptoResponse[] = [];
-  let currentWeekStart = 0;
-  
-  for (const item of dailyData) {
-    const date = new Date(item.time * 1000);
-    const dayOfWeek = date.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
-    
-    // Calculate Monday of this week (TradingView week start)
-    const mondayOffset = dayOfWeek === 0 ? -6 : -(dayOfWeek - 1);
-    const mondayDate = new Date(date);
-    mondayDate.setUTCDate(date.getUTCDate() + mondayOffset);
-    mondayDate.setUTCHours(0, 0, 0, 0);
-    const weekStart = Math.floor(mondayDate.getTime() / 1000);
-    
-    // If this is a new week, process the previous week
-    if (currentWeekStart !== weekStart && currentWeek.length > 0) {
-      const weekCandle = createWeeklyCandle(currentWeek, currentWeekStart);
-      weeklyCandles.push(weekCandle);
-      
-      const weekVolume = {
-        time: currentWeekStart,
-        value: currentWeek.reduce((sum, day) => sum + day.volumefrom, 0),
-        color: weekCandle.close >= weekCandle.open ? '#26A69A' : '#EF5350'
-      };
-      weeklyVolumes.push(weekVolume);
-      
-      currentWeek = [];
-    }
-    
-    currentWeekStart = weekStart;
-    currentWeek.push(item);
-  }
-  
-  // Process the last week
-  if (currentWeek.length > 0) {
-    const weekCandle = createWeeklyCandle(currentWeek, currentWeekStart);
-    weeklyCandles.push(weekCandle);
-    
-    const weekVolume = {
-      time: currentWeekStart,
-      value: currentWeek.reduce((sum, day) => sum + day.volumefrom, 0),
-      color: weekCandle.close >= weekCandle.open ? '#26A69A' : '#EF5350'
-    };
-    weeklyVolumes.push(weekVolume);
-  }
-  
-  console.log(`Aggregated ${dailyData.length} daily candles into ${weeklyCandles.length} weekly candles`);
-  return { candles: weeklyCandles, volumes: weeklyVolumes };
-}
-
-/**
- * Create a weekly candle from daily candles
- */
-function createWeeklyCandle(weekData: CryptoResponse[], weekStart: number) {
-  // Sort by time to ensure proper order
-  const sortedData = weekData.sort((a, b) => a.time - b.time);
-  
-  return {
-    time: weekStart,
-    open: sortedData[0].open,  // First day's open
-    high: Math.max(...sortedData.map(d => d.high)),  // Week's highest high
-    low: Math.min(...sortedData.map(d => d.low)),    // Week's lowest low
-    close: sortedData[sortedData.length - 1].close   // Last day's close
-  };
-}
-
 // Function to fetch top cryptocurrencies by market cap
 export async function fetchTopCryptos(limit: number = 100): Promise<CryptoCurrency[]> {
   try {
@@ -483,10 +408,8 @@ export async function fetchCryptoPriceData(symbol: CryptoSymbol, timeframe: stri
       apiTimeframe = 'day';
       break;
     case '1w':
-      // Для недельного таймфрейма получаем дневные данные и агрегируем их вручную
-      // чтобы точно контролировать начало недели (понедельник как в TradingView)
-      apiTimeframe = 'day';
-      aggregate = 1;  // Получаем дневные данные
+      apiTimeframe = 'day';  // We'll get daily data and convert to weekly
+      aggregate = 1;         // No aggregation, we'll do it manually
       break;
     default:
       apiTimeframe = 'hour';
@@ -495,12 +418,9 @@ export async function fetchCryptoPriceData(symbol: CryptoSymbol, timeframe: stri
   // Use the base API URL
   const baseUrl = 'https://min-api.cryptocompare.com/data/v2/';
   
-  // Adjust request limit based on timeframe
-  let requestLimit = 2000;
-  if (timeframe === '1w') {
-    // For weekly data, get 2000 daily candles to manually aggregate into ~285 weeks
-    requestLimit = 2000;
-  }
+  // For weekly timeframe, get maximum available data
+  // Limit to 2000 to avoid API errors
+  const requestLimit = 2000;
   
   // Complete API URL
   const url = `${baseUrl}histo${apiTimeframe}`;
@@ -531,11 +451,6 @@ export async function fetchCryptoPriceData(symbol: CryptoSymbol, timeframe: stri
     // Return all available data points
     const limitedData = rawData;
     
-    // For weekly timeframe, aggregate daily data into weekly candles
-    if (timeframe === '1w') {
-      return aggregateDailyToWeekly(limitedData);
-    }
-
     // Transform the data to the format needed by the chart
     const candles = limitedData.map((item: CryptoResponse) => ({
       time: item.time as number,

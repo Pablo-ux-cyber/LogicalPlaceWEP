@@ -46,7 +46,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // New endpoint for any cryptocurrency with indicators
+  // New endpoint for any cryptocurrency
   app.get("/api/crypto/:symbol/:timeframe", async (req, res) => {
     try {
       const { symbol, timeframe } = req.params;
@@ -59,7 +59,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check cache first
-      const cacheKey = `${symbol}_${timeframe}_with_indicators`;
+      const cacheKey = `${symbol}_${timeframe}`;
       const cachedData = cache.get(cacheKey);
       
       if (cachedData) {
@@ -69,55 +69,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch from API if not in cache
       const data = await fetchCryptoPriceData(symbol as CryptoSymbol, timeframe);
       
-      // Calculate Bollinger Bands for weekly timeframe as in TradingView
-      const calculateBollingerBands = (candleData: any[], period: number = 20, multiplier: number = 2.0) => {
-        if (candleData.length < period) return [];
-        
-        const result = [];
-        
-        // For weekly timeframe (1w), each candle IS a weekly candle
-        // So we calculate BB directly on the weekly data
-        for (let i = period - 1; i < candleData.length; i++) {
-          // Get last 'period' weekly candles for SMA and StdDev calculation
-          const periodData = candleData.slice(i - period + 1, i + 1);
-          const closePrices = periodData.map(candle => candle.close);
-          
-          // Calculate SMA for 20 weekly periods
-          const sma = closePrices.reduce((sum, price) => sum + price, 0) / period;
-          
-          // Calculate standard deviation for 20 weekly periods
-          const squaredDiffs = closePrices.map(price => Math.pow(price - sma, 2));
-          const variance = squaredDiffs.reduce((sum, diff) => sum + diff, 0) / period;
-          const stdDev = Math.sqrt(variance);
-          
-          // Calculate lower Bollinger Band
-          const bbLower = sma - (multiplier * stdDev);
-          
-          // Entry signal: current week's close <= BB lower
-          const currentPrice = candleData[i].close;
-          const entrySignal = currentPrice <= bbLower;
-          
-          result.push({
-            time: candleData[i].time,
-            bbLowerDaily: bbLower,   // For weekly chart, this is weekly BB
-            bbLowerWeekly: bbLower,  // Same value
-            entrySignal
-          });
-        }
-        return result;
-      };
-      
-      // Add indicators to the response
-      const indicators = calculateBollingerBands(data.candles);
-      const response = {
-        ...data,
-        indicators
-      };
-      
       // Store in cache
-      cache.set(cacheKey, response);
+      cache.set(cacheKey, data);
       
-      res.json(response);
+      res.json(data);
     } catch (error) {
       console.error(`Error fetching ${req.params.symbol} data:`, error);
       res.status(500).json({ 

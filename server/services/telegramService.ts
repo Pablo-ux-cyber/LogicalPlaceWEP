@@ -45,15 +45,9 @@ export function initTelegramBot() {
   }
 
   try {
-    // Создаем бота с отключенным polling в Replit среде
-    const isReplit = process.env.REPL_ID || process.env.REPLIT_DOMAINS;
-    bot = new TelegramBot(token, { polling: !isReplit });
-    
-    if (isReplit) {
-      console.log('Telegram-бот инициализирован без polling (Replit среда)');
-    } else {
-      console.log('Telegram-бот успешно запущен с polling');
-    }
+    // Создаем бота с включенным polling
+    bot = new TelegramBot(token, { polling: true });
+    console.log('Telegram-бот успешно запущен');
 
     // Обработчик команды /start
     bot.onText(/\/start/, (msg: any) => {
@@ -254,7 +248,7 @@ export async function checkBuySignals(cryptoSymbols: string[]) {
       try {
         console.log(`Проверка ${symbol}...`);
         
-        // Получаем недельные данные
+        // Получаем данные только недельного таймфрейма
         const weeklyData = await fetchCryptoPriceData(symbol, '1w');
         
         // Проверяем наличие данных
@@ -264,35 +258,28 @@ export async function checkBuySignals(cryptoSymbols: string[]) {
           logError(symbol, noDataMessage);
           return { success: false, error: true, signal: false };
         }
-
-        // Нужно минимум 20 недельных свечей для расчета BB(20,2)
-        if (weeklyData.candles.length < 20) {
-          const insufficientDataMessage = `Недостаточно данных для ${symbol} (${weeklyData.candles.length} < 20 недель). Пропускаем.`;
-          console.warn(insufficientDataMessage);
-          logError(symbol, insufficientDataMessage);
+        
+        // Получаем последнюю свечу недельного таймфрейма
+        const lastWeeklyCandle = weeklyData.candles[weeklyData.candles.length - 1];
+        
+        // Рассчитываем полосы Боллинджера для недельного таймфрейма
+        const weeklyBB = calculateBollingerBands(weeklyData.candles);
+        
+        if (!weeklyBB.length) {
+          const noBBMessage = `Не удалось рассчитать полосы Боллинджера для ${symbol}. Пропускаем.`;
+          console.warn(noBBMessage);
+          logError(symbol, noBBMessage);
           return { success: false, error: true, signal: false };
         }
         
-        // Получаем последнюю свечу
-        const lastWeeklyCandle = weeklyData.candles[weeklyData.candles.length - 1];
+        // Получаем значения полос для последней свечи
+        const lastWeeklyBB = weeklyBB[weeklyBB.length - 1];
+        
+        // Проверяем условие для сигнала на покупку - только недельный таймфрейм
         const currentPrice = lastWeeklyCandle.close;
+        const bbLowerWeekly = lastWeeklyBB.lower;
         
-        // Рассчитываем BB для последних 20 недель (как в TradingView)
-        const last20Weeks = weeklyData.candles.slice(-20);
-        const closePrices = last20Weeks.map(candle => candle.close);
-        
-        // SMA за 20 недель
-        const sma = closePrices.reduce((sum, price) => sum + price, 0) / 20;
-        
-        // Стандартное отклонение за 20 недель
-        const squaredDiffs = closePrices.map(price => Math.pow(price - sma, 2));
-        const variance = squaredDiffs.reduce((sum, diff) => sum + diff, 0) / 20;
-        const stdDev = Math.sqrt(variance);
-        
-        // Нижняя полоса Боллинджера (SMA - 2*StdDev)
-        const bbLowerWeekly = sma - (2.0 * stdDev);
-        
-        // Сигнал: текущая цена <= нижняя полоса BB
+        // Сигнал возникает когда цена ниже недельной нижней полосы Боллинджера
         const isBuySignal = currentPrice <= bbLowerWeekly;
         
         // Логируем результат проверки
