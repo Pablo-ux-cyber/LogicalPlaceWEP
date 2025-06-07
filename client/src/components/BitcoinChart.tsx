@@ -214,19 +214,19 @@ const BitcoinChart = ({ candleData, volumeData, indicatorData = [], isLoading, e
         const indicator = visibleIndicators[i];
         if (indicator && indicator.entrySignal) {
           console.log(`Drawing signal at index ${i}, time: ${indicator.time}`);
-          const signalY = lowY + 20;
+          const signalY = lowY + 30;
           
-          // Glow effect
-          ctx.fillStyle = 'rgba(255, 140, 0, 0.2)';
+          // Large bright background circle
+          ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
           ctx.beginPath();
-          ctx.arc(x, signalY, 10, 0, Math.PI * 2);
+          ctx.arc(x, signalY, 15, 0, Math.PI * 2);
           ctx.fill();
           
-          // Draw signal cross
-          ctx.strokeStyle = 'rgb(255, 165, 0)';
-          ctx.lineWidth = 2;
+          // Draw large bright signal cross
+          ctx.strokeStyle = 'rgb(255, 255, 0)';
+          ctx.lineWidth = 4;
           
-          const crossSize = 6;
+          const crossSize = 12;
           
           // Horizontal line
           ctx.beginPath();
@@ -339,7 +339,7 @@ const BitcoinChart = ({ candleData, volumeData, indicatorData = [], isLoading, e
           onClick={goToSignals}
           className="w-full px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white text-xs rounded"
         >
-          Find Signals
+          Find Signals ({indicatorData.filter(ind => ind.entrySignal).length})
         </button>
       </div>
 
