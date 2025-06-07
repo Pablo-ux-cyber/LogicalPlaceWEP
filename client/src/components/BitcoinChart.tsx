@@ -31,6 +31,27 @@ const BitcoinChart = ({ candleData, volumeData, indicatorData = [], isLoading, e
   const [showBBDaily, setShowBBDaily] = useState(true);
   const [showBBWeekly, setShowBBWeekly] = useState(true);
   const [showSignals, setShowSignals] = useState(true);
+  
+  // Function to navigate to signals
+  const goToSignals = () => {
+    if (!indicatorData.length) return;
+    
+    const signalIndexes = indicatorData
+      .map((indicator, index) => indicator.entrySignal ? index : -1)
+      .filter(index => index !== -1);
+    
+    if (signalIndexes.length > 0) {
+      // Go to the first signal
+      const signalIndex = signalIndexes[0];
+      const range = 50; // Show 50 candles around the signal
+      
+      setViewState({
+        startIndex: Math.max(0, signalIndex - range / 2),
+        endIndex: Math.min(candleData.length - 1, signalIndex + range / 2),
+        scale: 1
+      });
+    }
+  };
 
   // Initialize view state when data changes
   useEffect(() => {
@@ -295,7 +316,7 @@ const BitcoinChart = ({ candleData, volumeData, indicatorData = [], isLoading, e
           />
           Weekly BB
         </label>
-        <label className="flex items-center">
+        <label className="flex items-center mb-2">
           <input
             type="checkbox"
             checked={showSignals}
@@ -304,6 +325,12 @@ const BitcoinChart = ({ candleData, volumeData, indicatorData = [], isLoading, e
           />
           Buy Signals
         </label>
+        <button
+          onClick={goToSignals}
+          className="w-full px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white text-xs rounded"
+        >
+          Find Signals
+        </button>
       </div>
 
       <canvas
