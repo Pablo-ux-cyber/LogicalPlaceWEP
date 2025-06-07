@@ -34,22 +34,31 @@ const BitcoinChart = ({ candleData, volumeData, indicatorData = [], isLoading, e
   
   // Function to navigate to signals
   const goToSignals = () => {
-    if (!indicatorData.length) return;
+    if (!indicatorData.length) {
+      console.log('No indicator data available');
+      return;
+    }
     
     const signalIndexes = indicatorData
       .map((indicator, index) => indicator.entrySignal ? index : -1)
       .filter(index => index !== -1);
+    
+    console.log(`Found ${signalIndexes.length} signals in data:`, signalIndexes);
     
     if (signalIndexes.length > 0) {
       // Go to the first signal
       const signalIndex = signalIndexes[0];
       const range = 50; // Show 50 candles around the signal
       
+      console.log(`Navigating to signal at index ${signalIndex}`);
+      
       setViewState({
         startIndex: Math.max(0, signalIndex - range / 2),
         endIndex: Math.min(candleData.length - 1, signalIndex + range / 2),
         scale: 1
       });
+    } else {
+      console.log('No signals found in indicator data');
     }
   };
 
@@ -204,6 +213,7 @@ const BitcoinChart = ({ candleData, volumeData, indicatorData = [], isLoading, e
       if (showSignals && i < visibleIndicators.length) {
         const indicator = visibleIndicators[i];
         if (indicator && indicator.entrySignal) {
+          console.log(`Drawing signal at index ${i}, time: ${indicator.time}`);
           const signalY = lowY + 20;
           
           // Glow effect
