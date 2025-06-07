@@ -174,42 +174,47 @@ export function sendTestMessage() {
 }
 
 /**
- * Расчет индикаторов Боллинджера
- * @param data Массив свечей
- * @param period Период для расчета (по умолчанию 20)
- * @param multiplier Множитель для стандартного отклонения (по умолчанию 2.0)
+ * Расчет индикаторов Боллинджера точно как в PineScript
+ * Используем настройки: длина = 20, источник = close, множитель = 2.0
+ * Формула: basis = sma(close, 20), dev = mult * stdev(close, 20), lower = basis - dev
  */
-function calculateBollingerBands(data: CandleData[], period: number = 20, multiplier: number = 2.0) {
-  if (data.length < period) {
-    console.warn(`Недостаточно данных для расчета полос Боллинджера. Нужно как минимум ${period}, имеется ${data.length}.`);
+function calculateBollingerBands(data: CandleData[], length: number = 20, mult: number = 2.0) {
+  if (data.length < length) {
+    console.warn(`Недостаточно данных для расчета полос Боллинджера. Нужно как минимум ${length}, имеется ${data.length}.`);
     return [];
   }
 
   const result = [];
 
-  for (let i = period - 1; i < data.length; i++) {
-    // Собираем данные за период
-    const periodData = data.slice(i - period + 1, i + 1);
+  for (let i = length - 1; i < data.length; i++) {
+    // Собираем цены закрытия за период (как в PineScript: sma(close, length))
+    const closePrices = [];
+    for (let j = i - length + 1; j <= i; j++) {
+      closePrices.push(data[j].close);
+    }
     
-    // Расчет SMA (простое скользящее среднее)
-    const sum = periodData.reduce((acc, candle) => acc + candle.close, 0);
-    const sma = sum / period;
+    // Расчет SMA (basis в PineScript)
+    const basis = closePrices.reduce((sum, price) => sum + price, 0) / length;
     
-    // Расчет стандартного отклонения
-    const squaredDiffs = periodData.map(candle => Math.pow(candle.close - sma, 2));
-    const variance = squaredDiffs.reduce((acc, diff) => acc + diff, 0) / period;
-    const stdDev = Math.sqrt(variance);
+    // Расчет стандартного отклонения (как в PineScript: stdev(close, length))
+    const squaredDiffs = closePrices.map(price => Math.pow(price - basis, 2));
+    const variance = squaredDiffs.reduce((sum, diff) => sum + diff, 0) / length; // PineScript использует N, не N-1
+    const stdev = Math.sqrt(variance);
     
-    // Расчет верхней и нижней полос
-    const upper = sma + (multiplier * stdDev);
-    const lower = sma - (multiplier * stdDev);
+    // Расчет отклонения (dev в PineScript)
+    const dev = mult * stdev;
+    
+    // Расчет полос (как в PineScript)
+    const upper = basis + dev;
+    const lower = basis - dev;
     
     result.push({
       time: data[i].time,
-      sma,
+      sma: basis,
       upper,
       lower,
-      stdDev
+      stdDev: stdev,
+      dev
     });
   }
 
@@ -281,6 +286,23 @@ export async function checkBuySignals(cryptoSymbols: string[]) {
         
         // Сигнал возникает когда цена ниже недельной нижней полосы Боллинджера
         const isBuySignal = currentPrice <= bbLowerWeekly;
+        
+        // Детальное логирование для отладки расчетов
+        const lastCandle = weeklyData.candles[weeklyData.candles.length - 1];
+        const candleDate = new Date(lastCandle.time * 1000);
+        
+        console.log(`[DEBUG] ${symbol} - Последняя свеча: ${candleDate.toISOString()}`);
+        console.log(`[DEBUG] ${symbol} - Цена закрытия: ${currentPrice}`);
+        console.log(`[DEBUG] ${symbol} - BB Lower: ${bbLowerWeekly.toFixed(2)}`);
+        console.log(`[DEBUG] ${symbol} - SMA: ${lastWeeklyBB.sma.toFixed(2)}`);
+        console.log(`[DEBUG] ${symbol} - StdDev: ${lastWeeklyBB.stdDev.toFixed(4)}`);
+        
+        if (isBuySignal) {
+          console.log(`⚠️ ${symbol}: Цена ${currentPrice} <= BB ${bbLowerWeekly.toFixed(2)} - СИГНАЛ НА ПОКУПКУ!`);
+          logToFile(`⚠️ ${symbol}: Цена ${currentPrice} <= BB ${bbLowerWeekly.toFixed(2)} - СИГНАЛ НА ПОКУПКУ!`, 'signals');
+        } else {
+          console.log(`${symbol}: Цена ${currentPrice} > BB ${bbLowerWeekly.toFixed(2)}`);
+        }
         
         // Логируем результат проверки
         logCryptoCheck(symbol, currentPrice, bbLowerWeekly, isBuySignal);
