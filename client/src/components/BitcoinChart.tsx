@@ -5,6 +5,7 @@ import { formatPrice } from '@/lib/utils';
 interface BitcoinChartProps {
   candleData: CandleData[];
   volumeData: VolumeData[];
+  indicatorData?: IndicatorValue[];
   isLoading: boolean;
   error: Error | null;
   onRetry: () => void;
@@ -34,7 +35,7 @@ interface IndicatorValue {
   entrySignal: boolean;
 }
 
-const BitcoinChart = ({ candleData, volumeData, isLoading, error, onRetry }: BitcoinChartProps) => {
+const BitcoinChart = ({ candleData, volumeData, indicatorData, isLoading, error, onRetry }: BitcoinChartProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   
@@ -72,8 +73,8 @@ const BitcoinChart = ({ candleData, volumeData, isLoading, error, onRetry }: Bit
   // Keyboard state tracking
   const [isShiftKeyDown, setIsShiftKeyDown] = useState(false);
   
-  // Calculate Bollinger Bands indicators exactly as in PineScript code
-  const indicatorData = useMemo(() => {
+  // Calculate Bollinger Bands indicators exactly as in PineScript code (fallback if not provided)
+  const calculatedIndicators = useMemo(() => {
     if (!candleData.length) return [];
     
     const length = 20; // BB Length from PineScript

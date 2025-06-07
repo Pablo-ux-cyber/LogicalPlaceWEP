@@ -29,6 +29,14 @@ export interface VolumeData {
 export interface CryptoChartData {
   candles: CandleData[];
   volumes: VolumeData[];
+  indicators?: IndicatorValue[];
+}
+
+export interface IndicatorValue {
+  time: number;
+  bbLowerDaily: number;
+  bbLowerWeekly: number;
+  entrySignal: boolean;
 }
 
 // For backward compatibility

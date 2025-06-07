@@ -46,7 +46,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // New endpoint for any cryptocurrency
+  // New endpoint for any cryptocurrency with indicators
   app.get("/api/crypto/:symbol/:timeframe", async (req, res) => {
     try {
       const { symbol, timeframe } = req.params;
@@ -59,7 +59,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check cache first
-      const cacheKey = `${symbol}_${timeframe}`;
+      const cacheKey = `${symbol}_${timeframe}_with_indicators`;
       const cachedData = cache.get(cacheKey);
       
       if (cachedData) {
@@ -69,10 +69,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch from API if not in cache
       const data = await fetchCryptoPriceData(symbol as CryptoSymbol, timeframe);
       
-      // Store in cache
-      cache.set(cacheKey, data);
+      // Calculate Bollinger Bands using the same algorithm as Telegram service
+      const calculateBollingerBands = (candleData: any[], period: number = 20, multiplier: number = 2.0) => {
+        if (candleData.length < period) return [];
+        
+        const result = [];
+        for (let i = period - 1; i < candleData.length; i++) {
+          const periodData = candleData.slice(i - period + 1, i + 1);
+          const sum = periodData.reduce((acc, candle) => acc + candle.close, 0);
+          const sma = sum / period;
+          const squaredDiffs = periodData.map(candle => Math.pow(candle.close - sma, 2));
+          const variance = squaredDiffs.reduce((acc, diff) => acc + diff, 0) / period;
+          const stdDev = Math.sqrt(variance);
+          const lower = sma - (multiplier * stdDev);
+          
+          // Check for buy signal (price <= lower BB)
+          const entrySignal = candleData[i].close <= lower;
+          
+          result.push({
+            time: candleData[i].time,
+            bbLowerDaily: lower, // Same as weekly for now
+            bbLowerWeekly: lower,
+            entrySignal
+          });
+        }
+        return result;
+      };
       
-      res.json(data);
+      // Add indicators to the response
+      const indicators = calculateBollingerBands(data.candles);
+      const response = {
+        ...data,
+        indicators
+      };
+      
+      // Store in cache
+      cache.set(cacheKey, response);
+      
+      res.json(response);
     } catch (error) {
       console.error(`Error fetching ${req.params.symbol} data:`, error);
       res.status(500).json({ 

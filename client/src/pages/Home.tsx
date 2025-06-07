@@ -128,6 +128,7 @@ export default function Home() {
       <BitcoinChart
         candleData={chartData?.candles || []}
         volumeData={chartData?.volumes || []}
+        indicatorData={chartData?.indicators || []}
         isLoading={isLoading}
         error={error as Error}
         onRetry={refetch}
