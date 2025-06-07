@@ -45,9 +45,15 @@ export function initTelegramBot() {
   }
 
   try {
-    // Создаем бота с включенным polling
-    bot = new TelegramBot(token, { polling: true });
-    console.log('Telegram-бот успешно запущен');
+    // Создаем бота с отключенным polling в Replit среде
+    const isReplit = process.env.REPL_ID || process.env.REPLIT_DOMAINS;
+    bot = new TelegramBot(token, { polling: !isReplit });
+    
+    if (isReplit) {
+      console.log('Telegram-бот инициализирован без polling (Replit среда)');
+    } else {
+      console.log('Telegram-бот успешно запущен с polling');
+    }
 
     // Обработчик команды /start
     bot.onText(/\/start/, (msg: any) => {
