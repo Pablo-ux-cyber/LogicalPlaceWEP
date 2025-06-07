@@ -69,27 +69,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch from API if not in cache
       const data = await fetchCryptoPriceData(symbol as CryptoSymbol, timeframe);
       
-      // Calculate Bollinger Bands using the same algorithm as Telegram service
+      // Calculate Bollinger Bands for weekly timeframe as in TradingView
       const calculateBollingerBands = (candleData: any[], period: number = 20, multiplier: number = 2.0) => {
         if (candleData.length < period) return [];
         
         const result = [];
+        
+        // For weekly timeframe (1w), each candle IS a weekly candle
+        // So we calculate BB directly on the weekly data
         for (let i = period - 1; i < candleData.length; i++) {
+          // Get last 'period' weekly candles for SMA and StdDev calculation
           const periodData = candleData.slice(i - period + 1, i + 1);
-          const sum = periodData.reduce((acc, candle) => acc + candle.close, 0);
-          const sma = sum / period;
-          const squaredDiffs = periodData.map(candle => Math.pow(candle.close - sma, 2));
-          const variance = squaredDiffs.reduce((acc, diff) => acc + diff, 0) / period;
-          const stdDev = Math.sqrt(variance);
-          const lower = sma - (multiplier * stdDev);
+          const closePrices = periodData.map(candle => candle.close);
           
-          // Check for buy signal (price <= lower BB)
-          const entrySignal = candleData[i].close <= lower;
+          // Calculate SMA for 20 weekly periods
+          const sma = closePrices.reduce((sum, price) => sum + price, 0) / period;
+          
+          // Calculate standard deviation for 20 weekly periods
+          const squaredDiffs = closePrices.map(price => Math.pow(price - sma, 2));
+          const variance = squaredDiffs.reduce((sum, diff) => sum + diff, 0) / period;
+          const stdDev = Math.sqrt(variance);
+          
+          // Calculate lower Bollinger Band
+          const bbLower = sma - (multiplier * stdDev);
+          
+          // Entry signal: current week's close <= BB lower
+          const currentPrice = candleData[i].close;
+          const entrySignal = currentPrice <= bbLower;
           
           result.push({
             time: candleData[i].time,
-            bbLowerDaily: lower, // Same as weekly for now
-            bbLowerWeekly: lower,
+            bbLowerDaily: bbLower,   // For weekly chart, this is weekly BB
+            bbLowerWeekly: bbLower,  // Same value
             entrySignal
           });
         }

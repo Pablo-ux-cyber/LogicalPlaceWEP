@@ -408,8 +408,9 @@ export async function fetchCryptoPriceData(symbol: CryptoSymbol, timeframe: stri
       apiTimeframe = 'day';
       break;
     case '1w':
-      apiTimeframe = 'day';  // We'll get daily data and convert to weekly
-      aggregate = 1;         // No aggregation, we'll do it manually
+      // Для недельного таймфрейма берем готовые недельные данные
+      apiTimeframe = 'day';
+      aggregate = 7;  // 7 дней = 1 неделя
       break;
     default:
       apiTimeframe = 'hour';
@@ -418,9 +419,12 @@ export async function fetchCryptoPriceData(symbol: CryptoSymbol, timeframe: stri
   // Use the base API URL
   const baseUrl = 'https://min-api.cryptocompare.com/data/v2/';
   
-  // For weekly timeframe, get maximum available data
-  // Limit to 2000 to avoid API errors
-  const requestLimit = 2000;
+  // Adjust request limit based on timeframe
+  let requestLimit = 2000;
+  if (timeframe === '1w') {
+    // For weekly data with 7-day aggregation, request fewer points to get proper weekly candles
+    requestLimit = 285; // ~2000 days / 7 = ~285 weeks, which gives us about 5.5 years of weekly data
+  }
   
   // Complete API URL
   const url = `${baseUrl}histo${apiTimeframe}`;
