@@ -284,8 +284,11 @@ export async function checkBuySignals(cryptoSymbols: string[]) {
         const currentPrice = lastWeeklyCandle.close;
         const bbLowerWeekly = lastWeeklyBB.lower;
         
-        // Сигнал возникает когда цена ниже недельной нижней полосы Боллинджера
-        const isBuySignal = currentPrice <= bbLowerWeekly;
+        // Сигнал возникает когда цена ЗНАЧИТЕЛЬНО ниже недельной нижней полосы Боллинджера
+        // Добавляем буфер 0.5% чтобы избежать ложных сигналов из-за округлений
+        const bufferPercent = 0.005; // 0.5%
+        const threshold = bbLowerWeekly * (1 + bufferPercent);
+        const isBuySignal = currentPrice < threshold;
         
         // Детальное логирование для отладки расчетов
         const lastCandle = weeklyData.candles[weeklyData.candles.length - 1];
@@ -294,14 +297,15 @@ export async function checkBuySignals(cryptoSymbols: string[]) {
         console.log(`[DEBUG] ${symbol} - Последняя свеча: ${candleDate.toISOString()}`);
         console.log(`[DEBUG] ${symbol} - Цена закрытия: ${currentPrice}`);
         console.log(`[DEBUG] ${symbol} - BB Lower: ${bbLowerWeekly.toFixed(2)}`);
+        console.log(`[DEBUG] ${symbol} - Threshold (BB + 0.5%): ${threshold.toFixed(2)}`);
         console.log(`[DEBUG] ${symbol} - SMA: ${lastWeeklyBB.sma.toFixed(2)}`);
         console.log(`[DEBUG] ${symbol} - StdDev: ${lastWeeklyBB.stdDev.toFixed(4)}`);
         
         if (isBuySignal) {
-          console.log(`⚠️ ${symbol}: Цена ${currentPrice} <= BB ${bbLowerWeekly.toFixed(2)} - СИГНАЛ НА ПОКУПКУ!`);
-          logToFile(`⚠️ ${symbol}: Цена ${currentPrice} <= BB ${bbLowerWeekly.toFixed(2)} - СИГНАЛ НА ПОКУПКУ!`, 'signals');
+          console.log(`⚠️ ${symbol}: Цена ${currentPrice} < Threshold ${threshold.toFixed(2)} - СИГНАЛ НА ПОКУПКУ!`);
+          logToFile(`⚠️ ${symbol}: Цена ${currentPrice} < Threshold ${threshold.toFixed(2)} (BB: ${bbLowerWeekly.toFixed(2)}) - СИГНАЛ НА ПОКУПКУ!`, 'signals');
         } else {
-          console.log(`${symbol}: Цена ${currentPrice} > BB ${bbLowerWeekly.toFixed(2)}`);
+          console.log(`${symbol}: Цена ${currentPrice} >= Threshold ${threshold.toFixed(2)}`);
         }
         
         // Логируем результат проверки
