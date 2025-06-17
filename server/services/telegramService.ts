@@ -329,18 +329,22 @@ export async function checkBuySignals(cryptoSymbols: string[]) {
             return { success: true, error: false, signal: false };
           }
           
-          const signalMessage = `⚠️ Найден сигнал на покупку для ${symbol}!`;
+          const signalMessage = `⚠️ ОТКЛЮЧЕНО: Найден сигнал на покупку для ${symbol}!`;
           console.log(signalMessage);
           logToFile(signalMessage, 'signals');
           
-          // Отправляем сигнал
-          sendBuySignal({
-            symbol,
-            price: currentPrice,
-            time: new Date(lastWeeklyCandle.time * 1000),
-            bbLowerDaily: 0, // Не используется в этой версии
-            bbLowerWeekly
-          });
+          // ВРЕМЕННО ОТКЛЮЧЕНО: Отправка сигналов в Telegram приостановлена
+          // до обновления кода на продакшн сервере
+          console.log(`[ОТКЛЮЧЕНО] Сигнал для ${symbol} НЕ отправлен в Telegram`);
+          logToFile(`[ОТКЛЮЧЕНО] Сигнал для ${symbol} НЕ отправлен в Telegram`, 'signals');
+          
+          // sendBuySignal({
+          //   symbol,
+          //   price: currentPrice,
+          //   time: new Date(lastWeeklyCandle.time * 1000),
+          //   bbLowerDaily: 0,
+          //   bbLowerWeekly
+          // });
           
           return { success: true, error: false, signal: true };
         }
